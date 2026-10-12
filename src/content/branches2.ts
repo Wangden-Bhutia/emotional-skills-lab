@@ -66,7 +66,7 @@ export const BRANCHES2: Record<string, { next: string[]; prompt: string; options
     'Your family starts avoiding the topic because each reassurance only helps for an hour.'],
     'What do you do for the rest of the week?', [
     ['Set a small worry window each day and fill the rest with planned activities.', 2, 'Containment helps many people; it does not remove the uncertainty.', 'Your days.', 'Some effort to redirect.', 'Most waiting periods.'],
-    ['Call the clinic every day for an update.', 0, 'One call is reasonable; daily calls rarely change timing and keep anxiety high.', 'A sense of control.', 'Calm.', 'Once, to confirm the date.'],
+    ['Call the clinic again midweek in case results come early.', 1, 'One call is reasonable; daily calls rarely change timing and keep anxiety high.', 'A sense of control.', 'Calm.', 'Once, to confirm the date.'],
     ['Tell one person how you feel and ask for company, not reassurance.', 2, 'Support without repeated reassurance-seeking.', 'Connection.', 'Some vulnerability.', 'When you need company.']]),
   sc22: b(['You find a typo. You feel relief for an hour, then the urge to check again.',
     'Three weeks pass. The bid is lost, but you have a lessons-learned plan ready.',
@@ -115,7 +115,7 @@ export const BRANCHES2: Record<string, { next: string[]; prompt: string; options
     'The client complains about you. Your manager asks what happened.'],
     'What do you do next?', [
     ['Write down what was said and when, and agree with your manager how future calls will be handled.', 2, 'A record and support from your organisation put responsibility where it belongs: with the person behaving badly and the people able to act.', 'Your safety, dignity and position.', 'Time and some discomfort.', 'Any personal or harassing remarks.'],
-    ['Handle all future calls alone to avoid fuss.', 0, 'Puts the burden on you; you are not responsible for managing someone else\'s inappropriate behaviour alone.', 'Avoiding fuss.', 'Your safety and support.', 'Never.'],
+    ['Handle all future calls alone to avoid fuss.', 1, 'Puts the burden on you; you are not responsible for managing someone else\'s inappropriate behaviour alone.', 'Avoiding fuss.', 'Your safety and support.', 'Only briefly, while you arrange support.'],
     ['Ask to be moved off the account.', 1, 'A legitimate protective choice; it may cost you work you valued.', 'Your wellbeing.', 'The account.', 'If remarks continue or you feel unsafe.']]),
   sc38: b(['Your manager asks the sender, who is embarrassed: it was an old list.',
     'The sender says "Oops, old list!" and adds you.',

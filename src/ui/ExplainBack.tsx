@@ -17,6 +17,7 @@ export function ExplainBack({ e, initial, onSave, onSkip }: { e: E; initial?: st
   const [self, setSelf] = useState<number[]>(RUBRIC.map(() => -1));
   const [revised, setRevised] = useState(false);
   return (<section className="card" aria-label="Explain it back">
+    <p className="kicker"><span aria-hidden>💬</span> Explain</p>
     <h2>Explain it back</h2>
     <p>{e.prompt}</p>
     <details className="rubric" open><summary>Rubric you will use to check yourself</summary><ul>{RUBRIC.map(r => <li key={r}>{r}</li>)}</ul></details>

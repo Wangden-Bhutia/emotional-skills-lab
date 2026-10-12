@@ -1,3 +1,4 @@
+import { withDistractors } from './distractors';
 import type { CheckItem } from './types';
 /** ORIGINAL, NON-VALIDATED self-rating items written for this app. Not a psychometric instrument.
  * ERQ and DERS-16 were not included because their licensing terms for redistribution in an app were not verified. */
@@ -13,7 +14,7 @@ export const SELF_RATING_ITEMS = [
 ];
 export const SELF_RATING_SCALE = ['Rarely', 'Sometimes', 'About half the time', 'Often', 'Almost always'];
 /** Original situational-judgement items (fixed set, not used elsewhere) */
-export const SJT_ITEMS: CheckItem[] = [
+const RAW_SJT_ITEMS: CheckItem[] = [
   { id: 'sjt1', q: 'A colleague emails "We need to talk about your work." You feel a jolt of dread. Best first step?', options: ['Assume the worst and prepare a defence', 'Notice the dread, separate fact from interpretation, and ask when they are free', 'Ignore the email', 'Reply asking what you did wrong this time'], answer: 1, why: 'Naming and separating facts keeps options open.' },
   { id: 'sjt2', q: 'You are at intensity 9 of anger in a heated call. What fits best?', options: ['Reappraise in detail mid-call', 'Ask for a short pause to lower arousal', 'Say exactly what you think', 'Hang up without a word'], answer: 1, why: 'Reduce intensity before complex thinking.' },
   { id: 'sjt3', q: 'You have replayed a mistake for two hours. What helps?', options: ['Ask "why am I like this?" again', 'Write what you will do differently next time', 'Ask five friends for reassurance', 'Punish yourself'], answer: 1, why: 'Concrete, forward thinking.' },
@@ -33,7 +34,7 @@ export const GOALS = [
   'Understand my recurring patterns',
 ];
 /** Knowledge items for baseline/post/follow-ups: original items, kept separate from lesson items so results are not inflated by practice. */
-export const KNOWLEDGE_ITEMS: CheckItem[] = [
+const RAW_KNOWLEDGE_ITEMS: CheckItem[] = [
   { id: 'kn1', q: 'Which is a camera fact rather than an interpretation?', options: ['He was rude', 'He left without saying goodbye', 'He does not like me', 'He was in a bad mood'], answer: 1, why: 'Only leaving without a goodbye could be recorded.' },
   { id: 'kn2', q: 'At very high anger (9 out of 10), what usually works best first?', options: ['A detailed reappraisal', 'Lowering intensity, for example a pause', 'Venting loudly', 'Making a decision fast'], answer: 1, why: 'Complex thinking is hard at peak intensity.' },
   { id: 'kn3', q: 'Rumination differs from reflection mainly because rumination...', options: ['Is shorter', 'Repeats abstract "why" questions without progress', 'Is always about others', 'Leads to plans'], answer: 1, why: 'Reflection is concrete and leads somewhere.' },
@@ -43,7 +44,7 @@ export const KNOWLEDGE_ITEMS: CheckItem[] = [
 ];
 /** Post-programme items: original, unseen alternatives to the baseline sets, written to cover the same skills
  * (camera facts, intensity, rumination, if-then plans, validation, strategy choice) without repeating them. */
-export const POST_KNOWLEDGE_ITEMS: CheckItem[] = [
+const RAW_POST_KNOWLEDGE_ITEMS: CheckItem[] = [
   { id: 'pk1', q: 'Which statement is a camera fact?', options: ['She was dismissive', 'She replied with one word', 'She is annoyed with me', 'She thinks my idea is bad'], answer: 1, why: 'Only the one-word reply could be recorded; the rest are interpretations.' },
   { id: 'pk2', q: 'Your anxiety is at 8 out of 10 just before a presentation. What is usually the better first move?', options: ['Analyse every reason you might fail', 'A brief physiological reset, then one key point to open with', 'Cancel the presentation', 'Tell yourself not to feel anxious'], answer: 1, why: 'At high intensity, lowering arousal first makes later thinking easier.' },
   { id: 'pk3', q: 'Which question is most likely to turn a mental loop into useful reflection?', options: ['"Why does this always happen to me?"', '"What is one thing I can try differently tomorrow?"', '"Who is to blame?"', '"What is wrong with me?"'], answer: 1, why: 'Concrete, forward questions support reflection.' },
@@ -51,7 +52,7 @@ export const POST_KNOWLEDGE_ITEMS: CheckItem[] = [
   { id: 'pk5', q: 'A friend says, "I am furious they cancelled again." Which reply validates without necessarily agreeing?', options: ['"You are overreacting."', '"That sounds really frustrating, especially when it keeps happening."', '"They are terrible people."', '"Just forget about it."'], answer: 1, why: 'It acknowledges the feeling and why it makes sense.' },
   { id: 'pk6', q: 'Which statement best matches the strategy-choice evidence summarised in this app?', options: ['One strategy works best for everyone', 'Which strategy helps depends on the situation and intensity', 'Distraction is always harmful', 'Reappraisal always works'], answer: 1, why: 'Flexible, context-dependent choice is the programme\'s core idea.' },
 ];
-export const POST_SJT_ITEMS: CheckItem[] = [
+const RAW_POST_SJT_ITEMS: CheckItem[] = [
   { id: 'psjt1', q: 'Your manager says, "Can we talk tomorrow about the project?" with no detail. You feel dread. Best first step?', options: ['Spend the evening preparing a defence', 'Note the dread, list the facts you have, and ask what it is about if you need to prepare', 'Reply asking whether you are in trouble', 'Avoid your manager until tomorrow'], answer: 1, why: 'Separating facts from the worst-case reading keeps options open.' },
   { id: 'psjt2', q: 'In an argument with a relative you are at anger 9. What fits best?', options: ['Make your strongest point now', 'Say you want to continue later and take a 20-minute break', 'Go silent and stay in the room', 'Reappraise in detail mid-argument'], answer: 1, why: 'Lower intensity first, then return to the issue.' },
   { id: 'psjt3', q: 'You have gone over a mistake in your head all evening. What helps most?', options: ['Keep going until it makes sense', 'Write one lesson and one action for next time, then do something absorbing', 'Ask several people whether it was really that bad', 'Decide you are bad at your job'], answer: 1, why: 'A concrete lesson ends the loop better than more analysis.' },
@@ -61,3 +62,7 @@ export const POST_SJT_ITEMS: CheckItem[] = [
   { id: 'psjt7', q: 'You are waiting a week for interview results and keep checking your email. Better plan?', options: ['Check more often so you hear first', 'Check twice a day and plan something you value in between', 'Assume you failed so you will not be disappointed', 'Email them daily'], answer: 1, why: 'Contain checking and act on what matters while you wait.' },
   { id: 'psjt8', q: 'You feel guilty after declining a favour you could not manage. This guilt means...', options: ['You did something wrong', 'Guilt can follow a reasonable boundary; it is not proof you were wrong', 'You should change your answer now', 'You are selfish'], answer: 1, why: 'Feelings are information, not verdicts.' },
 ];
+export const SJT_ITEMS: CheckItem[] = RAW_SJT_ITEMS.map(withDistractors);
+export const KNOWLEDGE_ITEMS: CheckItem[] = RAW_KNOWLEDGE_ITEMS.map(withDistractors);
+export const POST_KNOWLEDGE_ITEMS: CheckItem[] = RAW_POST_KNOWLEDGE_ITEMS.map(withDistractors);
+export const POST_SJT_ITEMS: CheckItem[] = RAW_POST_SJT_ITEMS.map(withDistractors);

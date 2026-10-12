@@ -1,20 +1,21 @@
+import { POSH_SHORT } from './support';
 /** Safety scenarios (spec section 12): threat, coercion and harassment. In these, the most skilful options put
  * safety, boundaries and appropriate support first. Regulating your own response is never the same as tolerating
- * unacceptable behaviour. These scenarios do not name crisis services, because those vary by place. */
+ * unacceptable behaviour. Indian support routes (112, the POSH Act committees) are named where they apply; see support.ts. */
 import type { ResponseOption, Scenario } from './types';
 type O = [text: string, quality: 0 | 1 | 2, feedback: string, protects: string, costs: string, fits: string];
 const o = ([text, quality, feedback, protects, costs, fits]: O): ResponseOption => ({ text, quality, feedback, tradeoff: { protects, costs, fits } });
-export const SAFETY_NOTE = 'This situation involves possible threat, coercion or harassment. Your safety comes first. Calming yourself can help you think, but it does not mean you should put up with the behaviour. You are not responsible for someone else\'s conduct, and getting support is a reasonable step, not a failure.';
+export const SAFETY_NOTE = 'This situation involves possible threat, coercion or harassment. Your safety comes first. Calming yourself can help you think, but it does not mean you should put up with the behaviour. You are not responsible for someone else\'s conduct, and getting support is a reasonable step, not a failure. If you are in danger in India, dial 112.';
 export const SAFETY_SCENARIOS: Scenario[] = [
   { id: 'sc41', category: 'professional', context: 'professional', safety: true, difficulty: 3, skill: 'Safety and boundaries',
-    title: 'Repeated comments from a senior colleague',
+    title: 'Repeated comments from a senior colleague', support: POSH_SHORT,
     situation: 'A senior colleague keeps commenting on your body and messages you late at night asking to meet "off the record". You have asked them once to stop. Today they said your contract renewal "depends on being friendly".',
     facts: ['You asked them to stop once', 'They linked your renewal to being "friendly"', 'The messages are late at night'],
     interpretations: ['I must have encouraged this', 'This is a pattern of pressure tied to my job'],
     emotionOptions: ['Fear', 'Anger', 'Shame', 'Contentment'], plausibleEmotions: [0, 1, 2],
     responses: [
-      o(['Stay calm, keep being friendly and hope it stops before the renewal.', 0, 'Staying calm is understandable, but tolerating this behaviour is not the aim of regulation. It leaves you exposed and is not your responsibility to manage alone.', 'Short-term job security, maybe.', 'Your safety and wellbeing; the pressure tends to continue.', 'Not as a plan. If you need time, start keeping a record now.']),
-      o(['Keep a dated record of messages and remarks, and report it to HR or another person with authority you trust.', 2, 'Puts the issue with people able to act. It may feel risky; a record and a trusted ally reduce that risk.', 'Your safety, rights and evidence.', 'Stress and uncertainty about how it will be handled.', 'Harassment linked to your job.']),
+      o(['Stay calm, keep being friendly and hope it stops before the renewal.', 1, 'Staying calm is understandable, but tolerating this behaviour is not the aim of regulation. It leaves you exposed and is not your responsibility to manage alone.', 'Short-term job security, maybe.', 'Your safety and wellbeing; the pressure tends to continue.', 'Not as a plan. If you need time, start keeping a record now.']),
+      o(['Keep a dated record of messages and remarks, and report it to your organisation\'s Internal Committee (the POSH route in India) or HR.', 2, 'Puts the issue with people who have a duty to act. It may feel risky, and a dated record plus a trusted ally reduce that risk.', 'Your safety, rights and evidence.', 'Stress and uncertainty about how it will be handled.', 'Harassment linked to your job.']),
       o(['Confront them angrily in front of the team.', 1, 'Your anger is justified. A public confrontation can backfire on you, though naming it clearly is not wrong; doing so with support is usually safer.', 'Your sense of standing up for yourself.', 'Your control over how the issue is handled.', 'If you feel safe and others are present to support you.'])],
     claimIds: ['gross1998-c1'],
     followUp: { next: [
@@ -22,8 +23,8 @@ export const SAFETY_SCENARIOS: Scenario[] = [
       'HR acknowledges your report and explains the next steps. Your colleague is told not to contact you outside work hours.',
       'The colleague denies everything and your manager asks to speak with you.'],
       prompt: 'What do you do next?', options: [
-        o(['Keep recording, tell a trusted colleague or friend, and use any independent support or advice service your workplace or region offers.', 2, 'Support and evidence protect you whatever happens next.', 'Your safety and support.', 'Time and emotional energy.', 'Any harassment situation.']),
-        o(['Withdraw your complaint to make things easier.', 0, 'Understandable under pressure, but it puts the burden back on you.', 'Short-term calm.', 'Your protection.', 'Only if you have decided that, with support, it is truly best for you.']),
+        o(['Keep recording, tell a trusted colleague or friend, and use the formal route: the Internal Committee, or the district Local Committee if your workplace has none or the complaint is against the employer.', 2, 'Support and evidence protect you whatever happens next.', 'Your safety and support.', 'Time and emotional energy.', 'Any harassment situation.']),
+        o(['Withdraw your complaint to make things easier.', 1, 'Understandable under pressure, but it puts the burden back on you.', 'Short-term calm.', 'Your protection.', 'Only if you have decided that, with support, it is truly best for you.']),
         o(['Start looking for other roles while the process runs.', 1, 'A legitimate protective choice; leaving is not a failure, and it does not mean the behaviour was acceptable.', 'Your future wellbeing.', 'Effort and possible loss of a role you valued.', 'If the environment does not feel safe.'])] } },
   { id: 'sc42', category: 'anger', context: 'everyday', safety: true, difficulty: 3, skill: 'Safety and boundaries',
     title: 'Threatened in a car park',
@@ -51,7 +52,7 @@ export const SAFETY_SCENARIOS: Scenario[] = [
     interpretations: ['I deserve this for my mistakes', 'This is intimidation, whatever my mistakes'],
     emotionOptions: ['Fear', 'Shame', 'Anger', 'Relief'], plausibleEmotions: [0, 1, 2],
     responses: [
-      o(['Take it quietly; it is part of the job.', 0, 'Staying quiet under threat is a common way to protect yourself in the moment, but silence is not the ideal long-term response to mistreatment.', 'Avoiding immediate conflict.', 'Your wellbeing; the pattern tends to continue.', 'Only to get safely out of the room.']),
+      o(['Take it quietly; it is part of the job.', 1, 'Staying quiet under threat is a common way to protect yourself in the moment, but silence is not the ideal long-term response to mistreatment.', 'Avoiding immediate conflict.', 'Your wellbeing; the pattern tends to continue.', 'Only to get safely out of the room.']),
       o(['Say "I will not continue this while I am being shouted at", leave the room, write down what happened, and speak to HR or another trusted person with authority.', 2, 'Sets a boundary and gets support. Feedback on your work can be discussed later without intimidation.', 'Your safety, dignity and evidence.', 'Fear of consequences in the short term.', 'Intimidation or threats at work.']),
       o(['Shout back.', 1, 'Your anger makes sense. Shouting back may escalate and be used against you; a firm, calm boundary is usually safer.', 'Your sense of standing up for yourself.', 'Your control of the outcome.', 'Rarely; leaving is usually safer.'])],
     claimIds: ['gross1998-c1'],

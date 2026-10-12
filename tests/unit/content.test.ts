@@ -92,7 +92,8 @@ describe('deepening pass: session depth (spec 5.3)', () => {
     // Application, prerequisites, duration
     expect(s.apply.length).toBeGreaterThan(30);
     if (s.id !== 'w01d1') expect(s.prerequisites.length).toBeGreaterThan(0);
-    expect(s.minutes, 'realistic duration').toBeGreaterThanOrEqual(15); expect(s.minutes).toBeLessThanOrEqual(30);
+    // Duration is a range derived from measured content (duration.ts); the upper end must stay within the spec's 30-minute ceiling.
+    expect(s.range[0], 'quick end').toBeGreaterThanOrEqual(2); expect(s.range[1]).toBeGreaterThan(s.range[0]); expect(s.range[1]).toBeLessThanOrEqual(30); expect(s.minutes).toBe(s.range[1]);
     for (const c of s.altChecks) { expect(c.options.length).toBeGreaterThanOrEqual(3); expect(c.answer).toBeLessThan(c.options.length); expect(c.why.length).toBeGreaterThan(5); }
   });
   it('activity types are varied across the programme', () => {

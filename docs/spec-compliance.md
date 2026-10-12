@@ -61,7 +61,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 |---|---|---|---|
 | 5.1a | 12 weeks, about 60 sessions, 5 a week | pass | u:content::has 60 sessions over 12 weeks |
 | 5.1b | Slower pace without penalty | pass | Nothing expires; Welcome page says so |
-| 5.1c | 15–30 min; durations stated honestly | partial | Estimates 18–26 min, enforced by test. They are formula estimates, not measured with users |
+| 5.1c | 15–30 min; durations stated honestly | partial | Each session shows a range taken from a measured scripted walk-through plus published reading rates (docs/durations.md); u:durations. Measured ranges are 3–15 min, below the 15–30 target. Not timed with real learners |
 | 5.1d | No padding | pass | u:content::no duplicated teaching paragraphs |
 | 5.2 | Nine phases with the listed topics | pass | 7 thin sub-topics now have full teaching blocks with a worked example and a scored item, added to existing sessions (`src/content/topics.ts`): limits of self-report (P1), when to express emotion (P4), assertive, aggressive and passive (P5), protective vs restrictive avoidance (P6), unequal power and incentives (P7), reinforcement and patterns vs causes (P8), and behavioural experiments (P8). Still 60 sessions, all 30 min or under. u:spec13::5.2 thin sub-topics deepened |
 | 5.3 | Each session has the listed parts | pass | u:content::session %s meets depth rules (activity, explain, apply, prerequisites, sources, duration, alt items) |

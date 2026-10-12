@@ -19,8 +19,10 @@ export interface Session {
   /** Alternative items used when a lesson check is retaken. */
   altChecks: CheckItem[];
   prerequisites: string[];
-  /** Estimated minutes and how it was computed. */
-  estimate: { reading: number; practice: number; activity: number; explain: number; checks: number; apply: number };
+  /** Duration range in minutes [quick, thorough], derived from measured content (see duration.ts). minutes = upper end. */
+  range: [number, number];
+  /** Inputs to the range: measured on-screen words, activity choices, questions; and whether they came from the walk-through. */
+  estimate: { words: number; interactions: number; quizItems: number; quizWords: number; explain: boolean; measured: boolean };
 }
 export type ScenarioCategory = 'anger' | 'criticism' | 'anxiety' | 'frustration' | 'misunderstanding' | 'professional';
 export interface TradeOff { protects: string; costs: string; fits: string }
@@ -33,6 +35,8 @@ export interface Scenario {
   difficulty: 1 | 2 | 3;
   /** Threat, coercion or harassment: safety-first feedback and notice (spec 12). */
   safety?: boolean;
+  /** Where-to-get-help note shown in the safety panel (verified routes only; see support.ts). */
+  support?: string;
   /** Optional branching follow-up: what happens next depends on the first choice; then a second decision. */
   followUp?: { next: string[]; prompt: string; options: ResponseOption[] };
 }

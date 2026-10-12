@@ -112,15 +112,15 @@ w12d1: {
   alt: ['"I snap more when I skip lunch" is best treated as...', ['A proven cause', 'A pattern you can test, for example by eating lunch for a week', 'Irrelevant', 'A diagnosis'], 1, 'Patterns become testable hypotheses.'],
 },
 w12d2: {
-  extra: 'Self-guided training has limits. Consider professional support if emotions often feel unmanageable, if they interfere with work, sleep or relationships for weeks, if you are using alcohol or other substances to cope, or if you have thoughts of harming yourself or others. Seeking help is a skill, not a failure. In an emergency in India, dial 112.',
+  extra: 'Self-guided training has limits. Consider professional support if emotions often feel unmanageable, if they interfere with work, sleep or relationships for weeks, if you are using alcohol or other substances to cope, or if you have thoughts of harming yourself or others. Seeking help is a skill, not a failure: you can start with a GP, a counsellor, or a helpline, and you do not need to be in crisis to call.',
   activity: cl('Which situations suggest seeking professional or urgent support?', ['Consider professional or urgent support', 'Self-practice may be enough'], [
     ['Low mood most days for several weeks, affecting work and sleep', 0, 'Persistent impact on daily life is a signal to seek support.'],
     ['Irritation after a frustrating commute', 1, 'An everyday emotion that skills practice can address.'],
-    ['Thoughts of harming yourself', 0, 'Contact emergency services or a crisis line now; in India dial 112.'],
+    ['Thoughts of harming yourself', 0, 'Get urgent help now: in India dial 112, or call Tele-MANAS on 14416.'],
     ['Nervousness before a presentation', 1, 'Common and usually manageable with practice.'],
   ]),
   explain: { prompt: 'Explain the limits of this self-guided programme and the signs that it is time to seek professional or urgent support.',
-    keyPoints: ['This app is skills training, not therapy or crisis care.', 'Persistent interference with daily life is a signal.', 'Thoughts of harm need urgent help (112 in India).', 'Seeking help is a skill.'] },
+    keyPoints: ['This app is skills training, not therapy or crisis care.', 'Persistent interference with daily life is a signal.', 'Thoughts of harm need urgent help (112 in India; Tele-MANAS 14416 for mental-health support).', 'Seeking help is a skill.'] },
   apply: 'Write down one person or service you would contact if things became too much.',
   alt: ['Which is a sign to seek professional support?', ['One bad day', 'Weeks of distress affecting sleep and work', 'Feeling annoyed in traffic', 'Nerves before a test'], 1, 'Persistent impact matters.'],
 },

@@ -14,7 +14,7 @@ export function Activity({ a, onDone }: { a: A; onDone: (correct: number, total:
   const check = (correct: number, total: number) => { setChecked(true); onDone(correct, total); };
   const kind = { classify: 'Sort it', sequence: 'Put in order', match: 'Match up', predict: 'Predict', compare: 'Compare' }[a.type];
   return (<section className="card activity" aria-label={`Activity: ${kind}`}>
-    <p className="muted small">Activity · {kind}</p><h2 className="h3">{a.prompt}</h2>
+    <p className="kicker"><span aria-hidden>✍</span> Try it · {kind}</p><h2 className="h3">{a.prompt}</h2>
     {a.type === 'classify' && <>
       {a.items.map((it, i) => <fieldset key={i} className="rating"><legend>{it.text}</legend>
         <div className="chips">{a.buckets.map((b, k) => <label key={k} className="chip"><input type="radio" name={`act-${i}`} disabled={checked} checked={ans[i] === k} onChange={() => setAns(x => ({ ...x, [i]: k }))} /> {b}</label>)}</div>

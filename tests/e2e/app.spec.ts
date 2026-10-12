@@ -29,8 +29,12 @@ test('week 1 checkpoint at 100% masters phase 1; failing shows retake', async ({
   await page.getByRole('button', { name: 'Skip for now' }).click();
   const first = await page.locator('section[aria-label] h3').first().textContent();
   await answerQuiz(page, false);
-  await expect(page.getByText(/Below the 80% mastery threshold/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Remediation' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Checkpoint not passed yet' })).toBeVisible();
+  await expect(page.getByText(/not mastered yet/)).toBeVisible();
+  await expect(page.getByText(/Session complete|Completed/)).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Revisit before retaking' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Retake checkpoint' })).toHaveClass(/primary/);
+  await expect(page.getByRole('button', { name: 'Continue without retaking' })).not.toHaveClass(/primary/);
   await page.getByRole('button', { name: 'Retake checkpoint' }).click();
   expect(await page.locator('section[aria-label] h3').first().textContent()).not.toBe(first);
   await answerQuiz(page, true);
@@ -45,7 +49,7 @@ test('locked sessions cannot be opened', async ({ page }) => {
 });
 
 test('baseline assessment saves goals, confidence, knowledge and situations separately', async ({ page }) => {
-  await page.getByRole('button', { name: 'Take baseline' }).click();
+  await page.getByRole('link', { name: 'take the optional baseline' }).click();
   await page.getByLabel('Worry or ruminate less').check();
   for (const fs of await page.locator('fieldset.rating').all()) await fs.getByText('Often').click();
   await page.getByRole('button', { name: 'Continue' }).click();
@@ -61,7 +65,7 @@ test('lesson has keyboard-operable activity with per-item feedback and explain-b
   await doSession(page, 'w01d1'); await doSession(page, 'w01d2');
   await page.goto('./#/session/w01d3');
   const act = page.locator('section.activity');
-  await expect(act.getByText('Activity · Sort it')).toBeVisible();
+  await expect(act.getByText('Try it · Sort it')).toBeVisible();
   await act.getByRole('radio').first().focus(); await page.keyboard.press('Space');
   for (const fs of await act.locator('fieldset').all()) await fs.getByRole('radio').first().check();
   await act.getByRole('button', { name: 'Check answers' }).click();
@@ -158,8 +162,9 @@ test('journal add, edit and delete individual entry', async ({ page }) => {
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('slow but fine morning')).toBeVisible();
   await expect(page.getByText(/edited/)).toBeVisible();
-  page.on('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Delete entry' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Delete this journal entry?');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete entry' }).click();
   await expect(page.getByText('slow but fine morning')).toHaveCount(0);
 });
 
@@ -168,8 +173,10 @@ test('export, delete all, import restores', async ({ page }) => {
   await page.goto('./#/settings');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export backup' }).click()]);
   const file = await dl.path();
-  page.on('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Delete all data' }).click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Delete everything' })).toBeDisabled();
+  await page.getByRole('dialog').getByLabel(/Type DELETE/).fill('DELETE');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete everything' }).click();
   await expect(page.getByText('All data deleted.')).toBeVisible();
   await page.goto('./'); await expect(page.getByRole('heading', { name: 'What emotions are for' })).toBeVisible();
   await page.goto('./#/settings');

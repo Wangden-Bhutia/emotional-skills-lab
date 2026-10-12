@@ -25,8 +25,11 @@ import { SAFETY_NOTE } from '../content/safetyScenarios';
 import type { AppState } from '../engine/state';
 import type { TradeOff } from '../content/types';
 import { InstallCard } from './install';
+import { useConfirm } from './confirm';
+import { SUPPORT } from '../content/support';
+const range = (r: readonly [number, number]) => `${r[0]} to ${r[1]} min`;
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 export const go = (h: string) => { location.hash = h; };
 const pct = (x: number | null) => (x === null ? 'No data yet' : `${Math.round(x * 100)}%`);
 const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -44,27 +47,31 @@ export function Home() {
   const priorities = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').slice(0, 3);
   const prevIdx = ns ? SESSIONS.indexOf(ns) - 1 : -1;
   const why = ns && (ns.prerequisites.length ? `It builds on ${ns.prerequisites.map(p => SESSIONS.find(x => x.id === p)?.title).filter(Boolean).join(' and ')}.` : prevIdx < 0 ? 'It is the first session.' : `It follows ${SESSIONS[prevIdx].title}.`);
-  const action = due ? `Do your ${due} due review${due > 1 ? 's' : ''} (a few minutes), then continue the programme.` : priorities.length ? `Revisit "${priorities[0].title}" before your next checkpoint.` : ns ? `Start "${ns.title}" when you have about ${ns.minutes} minutes.` : 'Try an unfamiliar gym scenario or a review.';
+  const firstRun = !st.settings.welcomed && !baseline && !Object.keys(st.completed).length;
   return (<>
     <h1>Today</h1>
     {notice && <div className="card warn" role="alert"><h2>Your saved data could not be read</h2><p>{notice}</p><button onClick={clearNotice}>Dismiss</button></div>}
-    {!st.settings.welcomed && <div className="card accent"><h2>New here?</h2><p>Read a short introduction: what this app can and cannot do, how long it takes, and how your data is stored.</p><div className="row-btns"><button className="primary" onClick={() => go('#/welcome')}>Read the introduction</button><button onClick={() => update(x => ({ ...x, settings: { ...x.settings, welcomed: true } }))}>Skip</button></div></div>}
+    {ns ? <section className="card hero" aria-labelledby="next-h">
+      <p className="kicker"><span aria-hidden>▶</span> Next session · Phase {ns.phase}: {phase!.title}</p>
+      <h2 id="next-h">{ns.title}</h2>
+      <p className="small muted">Week {ns.week}, day {ns.day} · {ns.kind === 'checkpoint' ? 'checkpoint' : ns.kind} · {range(ns.range)}</p>
+      <button className="primary wide" onClick={() => go(`#/session/${ns.id}`)}>Start session</button>
+      {firstRun ? <p className="small hero-links">New here? <a href="#/welcome">Read the 2-minute introduction</a> or <a href="#/assess/baseline">take the optional baseline</a> first.</p>
+        : !baseline ? <p className="small hero-links">Optional: <a href="#/assess/baseline">take the baseline</a> so you can compare later.</p> : null}
+    </section>
+      : <section className="card hero"><h2>Programme complete</h2><p>Keep skills fresh with reviews and the gym.</p>{!st.assessments.some(a => a.kind === 'post') && <button className="primary wide" onClick={() => go('#/assess/post')}>Take post-programme check</button>}</section>}
+    {due > 0 && <section className="card"><h2 className="h3">{due} review{due > 1 ? 's' : ''} due</h2><p className="small">A few minutes of recall keeps earlier skills fresh. Doing these before the next session is a good habit.</p><button onClick={() => go('#/review')}>Open reviews</button></section>}
+    {fu && <section className="card"><h2 className="h3">Follow-up is due</h2><p className="small">A short check about {fu === 'followup2' ? 2 : 6} weeks after the programme. Optional.</p><div className="row-btns"><button onClick={() => go(`#/assess/${fu}`)}>Take follow-up</button><button onClick={() => update(x => postponeFollowup(x))}>Postpone a week</button></div></section>}
     <InstallCard />
-    {!baseline && <div className="card accent"><h2>Start with a baseline</h2><p>An 8 to 12 minute snapshot so you can compare later. It is optional and stays on this device.</p><button className="primary" onClick={() => go('#/assess/baseline')}>Take baseline</button></div>}
-    {fu && <div className="card accent"><h2>Follow-up is due</h2><p>A short check about {fu === 'followup2' ? 2 : 6} weeks after the programme. Optional.</p><div className="row-btns"><button className="primary" onClick={() => go(`#/assess/${fu}`)}>Take follow-up</button><button onClick={() => update(x => postponeFollowup(x))}>Postpone a week</button></div></div>}
-    <section className="card" aria-labelledby="next-h"><p className="muted small">Next action</p><p className="lead">{action}</p></section>
-    {ns ? <section className="card" aria-labelledby="next-h"><p className="muted">Current phase {ns.phase}: {phase!.title} · Week {ns.week}, day {ns.day} · about {ns.minutes} min</p><h2 id="next-h">{ns.title}</h2><p>{ns.objective}</p>
-      <p className="small muted">Why this next: {why}</p>
-      <button className="primary" onClick={() => go(`#/session/${ns.id}`)}>Start session</button></section>
-      : <div className="card"><h2>Programme complete</h2><p>Keep skills fresh with reviews and the gym.</p>{!st.assessments.some(a => a.kind === 'post') && <button className="primary" onClick={() => go('#/assess/post')}>Take post-programme check</button>}</div>}
-    <section className="card"><h2>Learning priorities</h2>{priorities.length ? <ul>{priorities.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: latest delayed answers were below the mastery threshold.</li>)}</ul> : <p className="small">No skill is currently flagged for extra practice.</p>}</section>
+    {ns && <details className="card small"><summary>Why this session next</summary><p>{why} {ns.objective}</p></details>}
+    {priorities.length > 0 && <section className="card"><h2 className="h3">Worth revisiting</h2><ul>{priorities.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: latest delayed answers were below the mastery threshold.</li>)}</ul></section>}
     <div className="grid2">
       <button className="tile" onClick={() => go('#/review')}><strong>{due}</strong><span>reviews due</span></button>
       <button className="tile" onClick={() => go('#/progress')}><strong>{m.masteredSkills}/{SKILL_SESSIONS.length}</strong><span>skills at mastery threshold</span></button>
-      <button className="tile" onClick={() => go('#/programme')}><strong>{Object.keys(st.completed).length}/{SESSIONS.length}</strong><span>sessions completed</span></button>
+      <button className="tile" onClick={() => go('#/programme')}><strong>{Object.keys(st.completed).length}/{SESSIONS.length}</strong><span>sessions finished</span></button>
       <button className="tile" onClick={() => go('#/assess')}><strong>Checks</strong><span>assessment centre</span></button>
     </div>
-    <p className="muted small">This is skills training, not therapy or crisis care. If you are in danger, contact local emergency services. <a href="#/help">More on safety</a></p>
+    <p className="muted small">This is skills training, not therapy or crisis care. In an emergency in India, dial 112. <a className="pad" href="#/help">Safety and support</a></p>
   </>);
 }
 
@@ -81,7 +88,7 @@ export function Welcome() {
   return (<><h1>Welcome to Emotional Skills Lab</h1>
     <section className="card"><h2>What it is</h2><p>A private training programme for noticing, understanding and choosing how to respond to everyday emotions, criticism, conflict and pressure. You learn a skill, practise it, show it in short checks, and review it later.</p></section>
     <section className="card"><h2>What it can and cannot do</h2><ul><li>It can teach and let you practise skills drawn from published research on emotion regulation and learning.</li><li>It cannot diagnose, treat or replace professional care, and it has not been tested as an intervention. No app, including this one, works the same for everyone.</li><li>It never reads or grades your writing. Scores come only from multiple-choice and scenario answers, using fixed rules you can see.</li></ul></section>
-    <section className="card"><h2>The pathway</h2><p>12 weeks, 9 phases, {SESSIONS.length} sessions of about 15 to 30 minutes (estimated, not measured), five a week. Going slower is fine; nothing expires and nothing is penalised.</p></section>
+    <section className="card"><h2>The pathway</h2><p>12 weeks, 9 phases, {SESSIONS.length} sessions of about {Math.min(...SESSIONS.map(x => x.range[0]))} to {Math.max(...SESSIONS.map(x => x.range[1]))} minutes each, five a week. Each session shows its own range: the low end is a quick reader who skips the optional writing, the high end a slower reader who writes the explanation (method in the repository docs; not yet timed with real learners). Going slower is fine; nothing expires and nothing is penalised.</p></section>
     <section className="card"><h2>Training, assessment and care are different</h2><p>Lessons and the gym are training. Checkpoints, reviews and the baseline are assessment of what you can show in this app. Neither is clinical care. If you are struggling, a qualified professional is the right support.</p></section>
     <section className="card"><h2>Offline use</h2><OfflineNote /></section>
     <section className="card"><h2>Your data</h2><p>Everything stays in this browser on this device. It is not encrypted and nothing is sent anywhere. Clearing browser data or private browsing can erase it, and anyone using this device could open it. Export a backup from Settings now and then.</p></section>
@@ -116,11 +123,12 @@ export function Programme() {
     {PHASES.map(p => (
       <section key={p.id} className="card">
         <h2>Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
-        <p className="muted">{p.goal} Weeks {p.weeks.join(' and ')}.</p>
+        <p className="muted">{p.goal} {p.weeks.length > 1 ? `Weeks ${p.weeks.join(' and ')}` : `Week ${p.weeks[0]}`}.</p>
         <ul className="list">{SESSIONS.filter(s => s.phase === p.id).map(s => {
           const done = !!st.completed[s.id], open = isUnlocked(st, s.id);
+          const cpOpen = done && s.kind === 'checkpoint' && !phaseMastered(st, s.phase);
           return <li key={s.id}><button disabled={!open} onClick={() => go(`#/session/${s.id}`)} className="row">
-            <span aria-hidden>{done ? '✓' : open ? '○' : '🔒'}</span><span>W{s.week}D{s.day} · {s.title}<span className="sr-only">{done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}{done && (s.kind === 'lesson' || s.kind === 'practice') ? ` · ${skillStatus(st, s.id).status}` : ''}</span></button></li>;
+            <span aria-hidden>{cpOpen ? '◐' : done ? '✓' : open ? '○' : '🔒'}</span><span>Week {s.week} · Day {s.day} · {s.title}<span className="sr-only">{cpOpen ? ', attempted, not yet mastered' : done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}{cpOpen ? ' · not yet mastered' : done && s.kind === 'checkpoint' ? ' · mastered' : done && (s.kind === 'lesson' || s.kind === 'practice') ? ` · ${skillStatus(st, s.id).status}` : ''}</span></button></li>;
         })}</ul>
       </section>))}
   </>);
@@ -134,12 +142,23 @@ function Breather() {
     <button onClick={() => { setT(0); setOn(!on); }}>{on ? 'Stop' : 'Start timer'}</button></div>;
 }
 
+const STEPS = ['Learn', 'Try', 'Explain', 'Check'] as const;
+/** Session step bar: text + symbol + aria-current, so state is never conveyed by colour alone. */
+function StepBar({ current, done, skip }: { current: number; done: boolean[]; skip?: number }) {
+  return <ol className="steps" aria-label="Session steps">{STEPS.map((t, i) => {
+    const state = i === skip ? 'na' : i === current ? 'current' : done[i] ? 'done' : 'todo';
+    return <li key={t} className={state} aria-current={i === current ? 'step' : undefined}>
+      <span className="mark" aria-hidden>{state === 'done' ? '✓' : state === 'na' ? '–' : i + 1}</span>{t}<span className="sr-only">{state === 'done' ? ', done' : state === 'current' ? ', current step' : state === 'na' ? ', not part of this session' : ', not started'}</span></li>;
+  })}</ol>;
+}
+const Kicker = ({ icon, children }: { icon: string; children: string }) => <p className="kicker"><span aria-hidden>{icon}</span> {children}</p>;
+
 export function SessionView({ id }: { id: string }) {
   const { st, update } = useApp();
   const s = SESSIONS.find(x => x.id === id);
   const resumed = st.inProgress?.[id];
   const [stage, setStageRaw] = useState<'learn' | 'explain' | 'check' | 'done'>(resumed ? 'explain' : 'learn');
-  const setStage = (x: 'learn' | 'explain' | 'check' | 'done') => { setStageRaw(x); update(y => { const ip = { ...y.inProgress }; if (x === 'explain' || x === 'check') ip[id] = { stage: x, at: Date.now() }; else delete ip[id]; return { ...y, inProgress: ip }; }); };
+  const setStage = (x: 'learn' | 'explain' | 'check' | 'done') => { setStageRaw(x); window.scrollTo(0, 0); update(y => { const ip = { ...y.inProgress }; if (x === 'explain' || x === 'check') ip[id] = { stage: x, at: Date.now() }; else delete ip[id]; return { ...y, inProgress: ip }; }); };
   const [reflect, setReflect] = useState('');
   const [score, setScore] = useState<number | null>(null);
   const [missed, setMissed] = useState<string[]>([]);
@@ -149,56 +168,70 @@ export function SessionView({ id }: { id: string }) {
   if (!isUnlocked(st, s.id)) return <div className="card"><h1>Locked</h1><p>Finish the previous session first.</p><button onClick={() => go('#/programme')}>Programme</button></div>;
   const prev = st.completed[s.id];
   const assess = s.kind === 'checkpoint' || s.kind === 'review';
+  const isCp = s.kind === 'checkpoint';
+  const mastered = isCp && phaseMastered(st, s.phase);
   const startCheck = () => { setItems(assess ? checkpointItems(st, s.id, CHECKPOINT_DRAW) : lessonItems(st, s.id)); setStage('check'); };
   const prereq = s.prerequisites.map(p => SESSIONS.find(x => x.id === p)!).filter(Boolean);
   const est = s.estimate;
+  const current = stage === 'learn' ? 0 : stage === 'explain' ? 2 : 3;
+  const done = [stage !== 'learn' || actDone, actDone || stage !== 'learn', stage === 'check' || stage === 'done', stage === 'done'];
+  const passed = score !== null && score >= MASTERY_THRESHOLD;
+  const status = prev && (isCp ? (mastered ? 'Mastered' : `Attempted ${fmt(prev.at)} · not yet mastered`) : `Completed ${fmt(prev.at)}`);
+  const finish = () => {
+    if (reflect.trim() && st.settings.journalPrompts !== false) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `${s.title}: ${reflect.trim()}` }, ...x.journal] }));
+    go('#/');
+  };
+  const resultTitle = !assess ? 'Lesson complete' : !isCp ? 'Review finished' : passed ? 'Checkpoint passed' : 'Checkpoint not passed yet';
   return (<article>
-    <p className="muted">Week {s.week}, day {s.day} · Phase {s.phase}: {PHASES[s.phase - 1].title} · about {s.minutes} min</p>
+    <p className="muted small">Week {s.week}, day {s.day} · Phase {s.phase}: {PHASES[s.phase - 1].title} · {range(s.range)}</p>
     <h1>{s.title}</h1><p className="lead">Goal: {s.objective}</p>
-    {prev && <p className="badge">Completed {fmt(prev.at)}</p>}
+    {status && stage !== 'done' && <p className={'badge' + (isCp && !mastered ? ' pending' : '')}>{status}</p>}
+    <StepBar current={current} done={done} skip={s.activity ? undefined : 1} />
     {resumed && stage === 'explain' && <p className="card small" role="status">Resumed where you left off. <button className="link" onClick={() => setStage('learn')}>Back to the lesson</button></p>}
     {stage === 'learn' && <>
       <details className="card small"><summary>Before you start: competency, prerequisites and time</summary>
         {COMPETENCIES[s.id] && <p><strong>Competency:</strong> {COMPETENCIES[s.id]} <span className="muted">{EVIDENCE_RULE}</span></p>}
         <p>{prereq.length ? <>Builds on: {prereq.map(p => <a key={p.id} href={`#/session/${p.id}`}>{p.title} </a>)}</> : 'No prerequisites.'}</p>
-        <p className="muted">Time estimate: reading {Math.round(est.reading)}, practice {Math.round(est.practice)}, activity {Math.round(est.activity)}, explain-back {est.explain}, questions {Math.round(est.checks)}, application plan {est.apply} minutes. Estimated, not measured.</p></details>
-      <section className="card">{s.teach.map((p, i) => <p key={i}>{p}</p>)}
+        <p className="muted">Time: {range(s.range)}. Reading about {est.words} words, {est.interactions} activity choices, {est.quizItems} questions{s.kind === 'checkpoint' ? '' : ', optional written explanation'}. Low end: faster reading, explanation skipped; high end: slower reading, explanation written. Derived from a measured walk-through of the content, not timed with real learners.</p></details>
+      <section className="block learn" aria-label="Learn"><Kicker icon="📖">Learn</Kicker>{s.teach.map((p, i) => <p key={i}>{p}</p>)}
         <p className="small muted">Evidence: {s.claimIds.map(c => { const src = claimSource(c); return src ? <a key={c} href={`#/library/${src.id}`}>{src.authors.split(',')[0]} ({src.year}) </a> : null; })}</p></section>
-      {s.example && <section className="card accent"><h2>Worked example</h2><p>{s.example}</p></section>}
-      {s.activity && <Activity a={s.activity} onDone={(c, t) => { setActDone(true); update(x => ({ ...x, activities: { ...x.activities, [s.id]: { at: Date.now(), correct: c, total: t } } })); }} />}
-      <section className="card"><h2>Practice exercise</h2><ol>{s.practice.map((p, i) => <li key={i}>{p}</li>)}</ol></section>
+      {s.example && <section className="block example" aria-label="Worked example"><Kicker icon="💡">Worked example</Kicker><p>{s.example}</p></section>}
+      {s.activity && <div className="block try"><Activity a={s.activity} onDone={(c, t) => { setActDone(true); update(x => ({ ...x, activities: { ...x.activities, [s.id]: { at: Date.now(), correct: c, total: t } } })); }} /></div>}
+      <section className="block practice" aria-label="Practice exercise"><Kicker icon="🗒">Practice in your day</Kicker><ol>{s.practice.map((p, i) => <li key={i}>{p}</li>)}</ol></section>
       {s.id === 'w03d4' && <Breather />}
-      <button className="primary" disabled={!!s.activity && !actDone} onClick={() => setStage('explain')}>{s.activity && !actDone ? 'Complete the activity to continue' : 'Next: explain it back'}</button>
+      <button className="primary wide" disabled={!!s.activity && !actDone} onClick={() => setStage('explain')}>{s.activity && !actDone ? 'Complete the activity to continue' : 'Next: explain it back'}</button>
     </>}
-    {stage === 'explain' && <ExplainBack e={s.explain} initial={st.explanations?.[s.id]?.at(-1)?.text}
+    {stage === 'explain' && <div className="block explain"><ExplainBack e={s.explain} initial={st.explanations?.[s.id]?.at(-1)?.text}
       onSkip={startCheck}
-      onSave={(text, self, revised) => { update(x => ({ ...x, explanations: { ...x.explanations, [s.id]: [...(x.explanations?.[s.id] ?? []), { at: Date.now(), text, self, revised }] } })); startCheck(); }} />}
-    {stage === 'check' && <Quiz key={items.map(i => i.id).join()} label={assess ? 'Checkpoint' : 'Knowledge check'} items={items} onDone={r => {
+      onSave={(text, self, revised) => { update(x => ({ ...x, explanations: { ...x.explanations, [s.id]: [...(x.explanations?.[s.id] ?? []), { at: Date.now(), text, self, revised }] } })); startCheck(); }} /></div>}
+    {stage === 'check' && <div className="block check"><Quiz key={items.map(i => i.id).join()} label={assess ? 'Checkpoint' : 'Knowledge check'} items={items} onDone={r => {
       const v = Object.values(r); setScore(v.filter(Boolean).length / v.length); setMissed(remediationFor(r)); setStage('done');
       update(x => prev && !assess ? retakeLesson(x, s.id, r) : completeSession(x, s.id, r));
-    }} />}
+    }} /></div>}
     {stage === 'done' && <>
-      <section className="card">
-        <h2>Session complete</h2>
-        <p>Score: {pct(score)}. {assess && (score! >= MASTERY_THRESHOLD ? 'Phase mastered. Its items will return as spaced reviews.' : `Below the ${MASTERY_THRESHOLD * 100}% mastery threshold. Revisit the lessons below and retake: a retake uses different questions where available.`)}</p>
-        {missed.length > 0 && <div className="feedback"><h3>Remediation</h3><p>Questions you missed come from these skills. Revisit them before retaking:</p>
+      <section className={'card result ' + (isCp ? (passed ? 'pass' : 'notyet') : 'done')} aria-labelledby="result-h">
+        <p className="kicker"><span aria-hidden>{isCp ? (passed ? '✓' : '↻') : '✓'}</span> {isCp ? 'Checkpoint result' : 'Result'}</p>
+        <h2 id="result-h">{resultTitle}</h2>
+        <p>Score: {pct(score)}{isCp ? ` (mastery needs ${MASTERY_THRESHOLD * 100}%).` : '.'} {isCp ? (passed ? 'Phase mastered. Its items will return as spaced reviews.' : 'Your attempt is saved and the next session is open, but this phase is not mastered yet. Revisit the lessons below, then retake: a retake uses different questions where available.')
+          : assess ? '' : 'Finishing a lesson records completion only; mastery is shown later in checkpoints and reviews.'}</p>
+        {isCp && !passed && <div className="row-btns"><button className="primary" onClick={startCheck}>Retake checkpoint</button></div>}
+        {missed.length > 0 && <div className="feedback"><h3>Revisit before retaking</h3><p className="small">Questions you missed come from these skills:</p>
           <ul>{missed.map(m => { const x = SESSIONS.find(y => y.id === m)!; return <li key={m}><a href={`#/session/${m}`}>{x.title}</a>: {x.objective}</li>; })}</ul></div>}
         <h3>Summary: key points</h3><ul>{s.explain.keyPoints.map(k => <li key={k}>{k}</li>)}</ul>
         <h3>Application task</h3><p>{s.apply}</p>
         <p className="small muted">Sources: {s.claimIds.map(c => { const src = claimSource(c); return src ? <a key={c} href={`#/library/${src.id}`}>{src.authors.split(',')[0]} ({src.year}) </a> : null; })}</p>
         <label htmlFor="refl">Optional reflection: {s.reflect}</label>
         <textarea id="refl" value={reflect} onChange={e => setReflect(e.target.value)} rows={3} />
-        <div className="row-btns"><button className="primary" onClick={() => {
-          if (reflect.trim() && st.settings.journalPrompts !== false) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `${s.title}: ${reflect.trim()}` }, ...x.journal] }));
-          go('#/');
-        }}>Save and continue</button>
-        {assess && score! < MASTERY_THRESHOLD && <button onClick={startCheck}>Retake checkpoint</button>}
-        {!assess && <button onClick={startCheck}>Retake with different questions</button>}</div>
+        <div className="row-btns">
+          {isCp && !passed ? <button onClick={finish}>Continue without retaking</button> : <button className="primary" onClick={finish}>Save and continue</button>}
+          {!assess && <button onClick={startCheck}>Retake with different questions</button>}</div>
       </section></>}
   </article>);
 }
 
 const DIFF = ['', 'Easier', 'Moderate', 'Harder'];
+/** Safety scenarios use neutral labels: no verdict that blames someone for complying or staying quiet under threat. */
+const SAFETY_Q = ['Higher risk to you', 'Understandable; leaves some risk with you', 'Safety-first choice'];
 export function Gym() {
   const { st } = useApp();
   const [cat, setCat] = useState(''); const [skill, setSkill] = useState(''); const [diff, setDiff] = useState(''); const [ctx, setCtx] = useState('');
@@ -239,12 +272,12 @@ export function ScenarioView({ id }: { id: string }) {
   const [transfer, setTransfer] = useState('');
   if (!s) return <p>Scenario not found.</p>;
   const factsOk = statements.every((x, i) => !!marks[i] === x.fact);
-  const Q = ['Likely to backfire', 'Partly effective', 'Skilful'];
+  const Q = s.safety ? SAFETY_Q : ['Likely to backfire', 'Partly effective', 'Skilful'];
   const triedIds = new Set(st.scenarios.map(a => a.scenarioId));
   const similar = SCENARIOS.filter(x => x.id !== s.id && (x.category === s.category || x.skill === s.skill)).sort((a, b) => Number(triedIds.has(a.id)) - Number(triedIds.has(b.id))).slice(0, 2);
   return (<article>
     <p className="muted">{CATEGORY_LABELS[s.category]} · {s.context} · {DIFF[s.difficulty]} · skill: {s.skill}</p>
-    <h1>{s.title}</h1>{s.safety && <div className="card safety" role="note"><h2 className="h3">Safety first</h2><p>{SAFETY_NOTE}</p></div>}<div className="card"><p className="lead">{s.situation}</p></div>
+    <h1>{s.title}</h1>{s.safety && <div className="card safety" role="note"><h2 className="h3">Safety first</h2><p>{SAFETY_NOTE}</p>{s.support && <p className="small">{s.support} <a href="#/help">Where to get help</a></p>}</div>}<div className="card"><p className="lead">{s.situation}</p></div>
     {step === 0 && <fieldset className="card"><legend><h2>1. Which are camera facts?</h2></legend>
       {statements.map((x, i) => <label key={i} className="check"><input type="checkbox" checked={!!marks[i]} onChange={e => setMarks(m => ({ ...m, [i]: e.target.checked }))} /> {x.t}</label>)}
       <button className="primary" onClick={() => setStep(1)}>Check</button></fieldset>}
@@ -260,13 +293,13 @@ export function ScenarioView({ id }: { id: string }) {
         update(x => ({ ...x, scenarios: [...x.scenarios, { scenarioId: s.id, at: attemptAt, emotions: emo, response: i, quality: r.quality, factsOk }] }));
       }}>{r.text}</button>)}</div></section>}
     {step >= 5 && resp !== null && <section className="card" role="status"><h2>Feedback and trade-offs</h2>
-      {s.responses.map((r, i) => <div key={i} className={'fb q' + r.quality + (i === resp ? ' chosen' : '')}>
+      {s.responses.map((r, i) => <div key={i} className={'fb q' + r.quality + (s.safety ? ' safe' : '') + (i === resp ? ' chosen' : '')}>
         <p><strong>{i === resp ? 'Your choice: ' : ''}{Q[r.quality]}</strong> · {r.text}</p><p className="small">{r.feedback}</p><TradeOffLines t={r.tradeoff} /></div>)}
       <p className="small muted">Ratings reflect this programme's teaching, not a validated scoring key. Context can change what works.</p>
       {step === 5 && <button className="primary" onClick={() => setStep(s.followUp ? 6 : 7)}>{s.followUp ? 'What happens next' : 'Next: reflect'}</button>}</section>}
     {step >= 6 && s.followUp && <section className="card"><h2>4. What happens next</h2><p className="lead">{s.followUp.next[resp!]}</p><h3>{s.followUp.prompt}</h3>
       <div className="opts">{s.followUp.options.map((o, i) => <div key={i}><button className={'opt' + (resp2 === i ? ' chosen' : '')} disabled={resp2 !== null} onClick={() => { setResp2(i); update(x => ({ ...x, scenarios: x.scenarios.map(a => a.scenarioId === s.id && a.at === attemptAt ? { ...a, followUp: i, followUpQuality: o.quality } : a) })); }}>{o.text}</button>
-        {resp2 !== null && <div className={'fb q' + o.quality}><p className="small"><strong>{resp2 === i ? 'Your choice: ' : ''}{Q[o.quality]}.</strong> {o.feedback}</p><TradeOffLines t={o.tradeoff} /></div>}</div>)}</div>
+        {resp2 !== null && <div className={'fb q' + o.quality + (s.safety ? ' safe' : '')}><p className="small"><strong>{resp2 === i ? 'Your choice: ' : ''}{Q[o.quality]}.</strong> {o.feedback}</p><TradeOffLines t={o.tradeoff} /></div>}</div>)}</div>
       {resp2 !== null && <p className="small muted">Other people's responses are not under your control; the same choice can turn out differently on another day.</p>}
       {resp2 !== null && step === 6 && <button className="primary" onClick={() => setStep(7)}>Next: reflect</button>}</section>}
     {step >= 7 && <section className="card"><h2>Reflect and transfer</h2><label htmlFor="tr">{TRANSFER[s.category]}</label>
@@ -292,6 +325,7 @@ export function Review() {
 
 export function Journal() {
   const { st, update } = useApp();
+  const [ask, dialog] = useConfirm();
   const [mode, setMode] = useState<'checkin' | 'reflection' | 'plan' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [sel, setSel] = useState<Record<string, number>>({});
@@ -323,7 +357,8 @@ export function Journal() {
       {e.emotions.length > 0 && <p>{e.emotions.map(x => `${x.name} ${x.intensity}`).join(', ')}</p>}
       {e.type === 'plan' ? <p>If {e.trigger}, then {e.strategy}.</p> : [e.trigger, e.facts, e.interpretation, e.urge, e.strategy, e.next, e.outcome, e.lesson, e.note].filter(Boolean).map((t, i) => <p key={i}>{t}</p>)}
       <div className="row-btns"><button className="link" onClick={() => edit(e)}>Edit entry</button>
-        <button className="link" onClick={() => { if (confirm('Delete this entry?')) update(x => ({ ...x, journal: x.journal.filter(y => y.id !== e.id) })); }}>Delete entry</button></div></li>)}</ul>
+        <button className="link" onClick={async () => { if (await ask({ title: 'Delete this journal entry?', body: <p>The entry from {fmt(e.at)} is removed from this device. This cannot be undone unless you have an exported backup.</p>, confirm: 'Delete entry', danger: true })) update(x => ({ ...x, journal: x.journal.filter(y => y.id !== e.id) })); }}>Delete entry</button></div></li>)}</ul>
+    {dialog}
   </>);
 }
 
@@ -386,7 +421,7 @@ export function AssessView({ kind }: { kind: Assessment['kind'] }) {
   const knowItems = post ? POST_KNOWLEDGE_ITEMS : KNOWLEDGE_ITEMS;
   const sjtItems = post ? POST_SJT_ITEMS : SJT_ITEMS;
   const [retItems] = useState(() => kind === 'baseline' ? [] : retentionItems(st));
-  const save = (sjtC: number, ret?: number) => update(x => ({ ...x, assessments: [...x.assessments, {
+  const save = (sjtC: number, ret?: number) => update(x => ({ ...x, settings: kind === 'baseline' ? { ...x.settings, welcomed: true } : x.settings, assessments: [...x.assessments, {
     kind, at: Date.now(), selfRatings: ratings, sjtCorrect: sjtC, sjtTotal: sjtItems.length, confidence, knowledgeCorrect: know ?? 0, knowledgeTotal: knowItems.length, itemSet: post ? 'post' : 'baseline',
     ...(kind === 'baseline' ? { goals, goalNote: goalNote.trim() || undefined, recurring: recurring.trim() || undefined } : {}), ...(kind !== 'baseline' && explanation.trim() ? { explanation: explanation.trim() } : {}),
     ...(ret !== undefined ? { retentionCorrect: ret, retentionTotal: retItems.length } : {}),
@@ -430,6 +465,7 @@ export function Library({ id }: { id?: string }) {
 
 export function Settings() {
   const { st, update, storage, persistent } = useApp();
+  const [ask, dialog] = useConfirm();
   const [msg, setMsg] = useState('');
   const [pending, setPending] = useState<AppState | null>(null);
   const [backupAt, setBackupAt] = useState<number | null>(null);
@@ -459,19 +495,24 @@ export function Settings() {
         <p className="small">Backup contains {summarise(pending).sessions} completed sessions, {summarise(pending).journal} journal entries, {summarise(pending).scenarios} scenario attempts and {summarise(pending).assessments} checks. This device has {cur.sessions}, {cur.journal}, {cur.scenarios} and {cur.assessments}.</p>
         <p className="small">Either way, your current data is saved as a backup on this device first.</p>
         <div className="row-btns"><button className="primary" onClick={() => apply('merge')}>Merge with current data</button><button onClick={() => apply('replace')}>Replace current data</button><button onClick={() => { setPending(null); setMsg('Import cancelled. Nothing was changed.'); }}>Cancel</button></div></div>}
-      {backupAt && <p className="small">Backup from before the last import: {fmt(backupAt)}. <button className="link" onClick={async () => { const b = await readPreImportBackup(storage); if (b && confirm('Restore the data from before the last import? Current data will be replaced.')) { update(() => b.state); setMsg('Restored data from before the last import.'); } }}>Restore it</button></p>}
+      {backupAt && <p className="small">Backup from before the last import: {fmt(backupAt)}. <button className="link" onClick={async () => { const b = await readPreImportBackup(storage); if (b && await ask({ title: 'Restore the data from before the last import?', body: <p>Your current data on this device will be replaced by the backup from {fmt(b.at)}.</p>, confirm: 'Restore backup' })) { update(() => b.state); setMsg('Restored data from before the last import.'); } }}>Restore it</button></p>}
       <div className="row-btns">
-        <button className="danger" onClick={() => { if (confirm('Reset progress? Sessions, scores, reviews and scenario history are cleared. Journal, checks and settings are kept.')) { update(x => ({ ...emptyState(), journal: x.journal, assessments: x.assessments, settings: x.settings })); setMsg('Progress reset.'); } }}>Reset progress</button>
-        <button className="danger" onClick={async () => { if (confirm('Delete ALL data permanently from this device? This includes your journal and any import backup. Export first if you want a copy.')) { await deleteAll(storage); update(() => emptyState()); setMsg('All data deleted.'); } }}>Delete all data</button></div>
+        <button className="danger" onClick={async () => { if (await ask({ title: 'Reset progress?', body: <><p>Cleared: sessions, scores, reviews and scenario history.</p><p>Kept: journal, baseline and other checks, settings.</p><p className="small muted">This cannot be undone unless you export a backup first.</p></>, confirm: 'Reset progress', danger: true })) { update(x => ({ ...emptyState(), journal: x.journal, assessments: x.assessments, settings: x.settings })); setMsg('Progress reset.'); } }}>Reset progress</button>
+        <button className="danger" onClick={async () => { if (await ask({ title: 'Delete all data from this device?', body: <><p>Everything is deleted permanently: progress, journal, checks, settings and any import backup.</p><p className="small muted">Export a backup first if you want a copy. This cannot be undone.</p></>, confirm: 'Delete everything', danger: true, typed: 'DELETE' })) { await deleteAll(storage); update(() => emptyState()); setMsg('All data deleted.'); } }}>Delete all data</button></div>
       <p role="status">{msg}</p></section>
     <section className="card"><h2>How progress works</h2><ul><li>Completion: sessions finished.</li><li>Mastery: a phase checkpoint scored at {MASTERY_THRESHOLD * 100}% or more. This threshold is a design choice, not a research standard.</li><li>Retention: correct answers on items reviewed {REVIEW_INTERVALS_DAYS.join(', ')} days after mastery. A wrong answer sends the item back to the first interval.</li></ul></section>
+    {dialog}
     <section className="card"><h2>About</h2><p className="small">Emotional Skills Lab version {APP_VERSION}, data schema {st.schema}. Self-guided education, not a medical device. It has not been evaluated in a study, so it makes no claim to improve outcomes. <a href="#/welcome">Reopen the introduction</a> · <a href="#/library">Evidence and its limits</a> · <a href="#/help">Safety</a></p>
       <p className="small muted">Updates: when a new version is published, it downloads in the background and is used the next time you open the app. Your data stays in place and is upgraded automatically if its format changes.</p></section>
   </>);
 }
 
 export function Help() {
-  return (<><h1>Safety and scope</h1><div className="card"><p>Emotional Skills Lab is self-guided skills training. It is not therapy, diagnosis or crisis support, and it has not been tested as a clinical intervention.</p>
-    <p>If you feel unsafe or may harm yourself or someone else, contact emergency services now. In India dial <a href="tel:112">112</a>. If difficult emotions persist or affect daily life, consider speaking with a qualified mental-health professional.</p>
-    <p>Content is informed by published research listed in the Library, simplified for practice. Individual results vary.</p></div></>);
+  const { emergency, teleManas, posh } = SUPPORT;
+  return (<><h1>Safety and support</h1>
+    <div className="card"><p>Emotional Skills Lab is self-guided skills training. It is not therapy, diagnosis or crisis support, and it has not been tested as a clinical intervention.</p></div>
+    <section className="card"><h2>In an emergency (India)</h2><p>If you feel unsafe or may harm yourself or someone else, call <a className="pad" href={`tel:${emergency.number}`}>{emergency.number}</a> now. It is the national {emergency.label}.</p></section>
+    <section className="card"><h2>Mental-health support (India)</h2><p>{teleManas.label} is free and available by phone: <a className="pad" href="tel:14416">{teleManas.numbers[0]}</a> or <a className="pad" href="tel:18008914416">{teleManas.numbers[1]}</a>. You do not need to be in crisis to call. If difficult emotions persist or affect sleep, work or relationships for weeks, a qualified professional is the right next step.</p></section>
+    <section className="card"><h2>Sexual harassment at work (India)</h2><p>{posh.summary}</p><p className="small muted">This is general information about the law, not legal advice.</p></section>
+    <p className="small muted">Numbers and the legal route were checked on official government websites (112.gov.in, telemanas.mohfw.gov.in, wcd.nic.in) on 13 Oct 2026. Outside India, use your local emergency number. Content in this app is informed by published research listed in the Library, simplified for practice; individual results vary.</p></>);
 }

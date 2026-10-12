@@ -45,7 +45,7 @@ test('11.2 keyboard only: complete a lesson (activity, explain-back skip, quiz) 
     await tabTo(page, btn); await page.keyboard.press('Enter');
     if (last) break;
   }
-  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Lesson complete' })).toBeVisible();
 });
 
 test('11.2 keyboard only: scenario decisions and branching follow-up', async ({ page }) => {
@@ -81,14 +81,15 @@ test('7.2/7.3 every option shows trade-offs; consequences differ by first choice
   await expect(page.getByText(/each has errors/)).toBeVisible();
 });
 
-test('12 safety scenario shows safety-first notice and rates tolerating as not skilful', async ({ page }) => {
+test('12 safety scenario: safety-first notice, no blame label for complying under pressure, formal route named', async ({ page }) => {
   await toResponses(page, 'sc41');
   await expect(page.getByRole('heading', { name: 'Safety first' })).toBeVisible();
   await page.getByRole('button', { name: /keep being friendly/ }).click();
   const chosen = page.locator('.fb.chosen');
-  await expect(chosen).toContainText('Likely to backfire');
-  await expect(chosen).toContainText('not your responsibility');
-  await expect(page.locator('.fb.q2')).toContainText(/report it to HR/);
+  await expect(chosen).toContainText('Understandable; leaves some risk with you');
+  await expect(chosen).not.toContainText(/backfire/i);
+  await expect(chosen).toContainText('not your job to manage');
+  await expect(page.locator('.fb.q2')).toContainText(/Internal Committee/);
 });
 
 test('3.3 import asks before changing anything; merge keeps both; cancel changes nothing; pre-import backup can be restored', async ({ page }) => {
@@ -111,8 +112,8 @@ test('3.3 import asks before changing anything; merge keeps both; cancel changes
   await page.goto('./#/journal');
   await expect(page.getByText('local only entry')).toBeVisible(); await expect(page.getByText('from the backup file')).toBeVisible();
   await page.goto('./#/settings');
-  page.on('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Restore it' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Restore backup' }).click();
   await expect(page.getByText('Restored data from before the last import.')).toBeVisible();
   await page.goto('./#/journal'); await expect(page.getByText('from the backup file')).toHaveCount(0); await expect(page.getByText('local only entry')).toBeVisible();
 });
@@ -148,18 +149,18 @@ test('9.4 lesson progress survives reload mid-session', async ({ page }) => {
   await expect(page.getByText('Resumed where you left off.')).toBeVisible();
   await page.getByRole('button', { name: 'Skip for now' }).click();
   await answerQuiz(page);
-  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Lesson complete' })).toBeVisible();
 });
 
 test('9.1/9.2/9.5 onboarding, dashboard priorities and assessment centre', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'Next action' }).or(page.getByText('Next action'))).toBeVisible();
-  await expect(page.getByText(/Current phase 1/)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Learning priorities' })).toBeVisible();
-  await page.getByRole('button', { name: 'Read the introduction' }).click();
+  await expect(page.getByRole('button', { name: 'Start session' })).toBeVisible();
+  await expect(page.getByText(/Phase 1/).first()).toBeVisible();
+  await page.getByText('Why this session next').click();
+  await page.getByRole('link', { name: 'Read the 2-minute introduction' }).click();
   await expect(page.getByRole('heading', { name: 'What it can and cannot do' })).toBeVisible();
   await expect(page.getByText(/not encrypted/)).toBeVisible();
   await page.getByRole('button', { name: 'Go to Today' }).click();
-  await expect(page.getByRole('button', { name: 'Read the introduction' })).toHaveCount(0);
+  await expect(page.getByText('New here?')).toHaveCount(0);
   await page.goto('./#/assess');
   await expect(page.getByRole('heading', { name: 'Assessment centre' })).toBeVisible();
   await expect(page.getByText(/not a validated cutoff/)).toBeVisible();
@@ -282,8 +283,9 @@ test('3.5 offline: export, delete and import a backup without a connection; offl
   await expect(page.getByText(/Offline ready/)).toBeVisible();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export backup' }).click()]);
   const file = (await dl.path())!;
-  page.on('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Delete all data' }).click();
+  await page.getByRole('dialog').getByLabel(/Type DELETE/).fill('DELETE');
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete everything' }).click();
   await expect(page.getByText('All data deleted.')).toBeVisible();
   await page.locator('input[type=file]').setInputFiles(file);
   await page.getByRole('button', { name: 'Replace current data' }).click();

@@ -1,3 +1,4 @@
+import { FEEDBACK } from './feedback';
 import type { Scenario, ScenarioCategory, ResponseOption } from './types';
 import { DIFFICULTY, BRANCHES } from './scenarioExtra';
 import { BRANCHES2 } from './branches2';
@@ -145,7 +146,7 @@ sc('frustration','professional','Mistake reaches the client','An error in your w
 sc('frustration','everyday','Rejected application','Your application for a course is rejected.',
  ['Application rejected'],['I am not good enough','This attempt did not succeed'],
  ['Disappointment','Shame','Relief','Anger'],[0,1,3],
- [['Ask whether feedback is available and plan the next cycle.',2,'Forward-focused.'],['Decide never to apply for anything again.',0,'All-or-nothing.'],['Take a few days to feel it before deciding.',2,'Allowing the emotion before deciding is also skilful.']],'Handling setbacks',['hayes2006-c1']),
+ [['Ask whether feedback is available and plan the next cycle.',2,'Forward-focused.'],['Apply straight away to three other courses so you do not dwell on it.',1,'Keeps momentum.'],['Take a few days to feel it before deciding.',2,'Allowing the emotion before deciding is also skilful.']],'Handling setbacks',['hayes2006-c1']),
 // BOUNDARIES
 sc('professional','professional','Messages at midnight','Your manager regularly messages you after midnight expecting replies.',
  ['Messages after midnight','Expectation of replies'],['I must always be available','Expectations have not been discussed'],
@@ -192,9 +193,15 @@ sc('misunderstanding','professional','Different deadlines','You thought the dead
 const withTO = (opts: ResponseOption[], t?: [string, string, string][]) => opts.map((r, i) => r.tradeoff || !t?.[i] ? r : { ...r, tradeoff: { protects: t[i][0], costs: t[i][1], fits: t[i][2] } });
 /** sc36 is a harassment situation: safety-first framing (spec 12). */
 const SAFETY_IDS = new Set(['sc36']);
+/** Applies the fuller per-option feedback from feedback.ts. */
+function withFeedback(s: Scenario): Scenario {
+  const fb = FEEDBACK[s.id]; if (!fb) return s;
+  const set = <T extends { feedback: string }>(opts: T[], f?: (string | null)[]) => opts.map((o, i) => f?.[i] ? { ...o, feedback: f[i]! } : o);
+  return { ...s, responses: set(s.responses, fb.r), followUp: s.followUp && { ...s.followUp, options: set(s.followUp.options, fb.f) } };
+}
 export const SCENARIOS: Scenario[] = [...BASE.map(s => {
   const f = BRANCHES[s.id] ?? BRANCHES2[s.id]; const t = TRADEOFFS[s.id];
   const responses = s.id === 'sc36' ? s.responses.map((r, i) => i === 0 ? { ...r, feedback: 'A common, understandable way to get through an uncomfortable moment, but it leaves the remark unaddressed. You are not responsible for the client\'s behaviour; reporting it afterwards is reasonable.' } : r) : s.responses;
   return { ...s, safety: SAFETY_IDS.has(s.id) || undefined, difficulty: DIFFICULTY[s.id] ?? 2, responses: withTO(responses, t?.r),
     followUp: f && { ...f, options: withTO(f.options, t?.f) } };
-}), ...SAFETY_SCENARIOS];
+}), ...SAFETY_SCENARIOS].map(withFeedback);

@@ -2,7 +2,7 @@ import type { Deep } from './types';
 import { cl, sq, mt, ch } from './deephelpers';
 export const DEEP2: Record<string, Deep> = {
 w04d1: {
-  extra: 'A practical test is the "camera check": could a video camera record it? A camera can record that someone did not say hello. It cannot record that they "ignored" you, because that includes a guess about intention. Interpretations are not wrong by default. Some are accurate. The point is to know which statements are guesses so you can check them before acting as if they were facts.',
+  extra: 'A practical test is the "camera check": could a video camera record it? A camera can record that someone did not say hello. It cannot record that they "ignored" you, because that includes a guess about intention. Some interpretations turn out to be accurate. The point is to know which statements are guesses so you can check them before acting as if they were facts.',
   activity: cl('Sort each statement into camera fact or interpretation.', ['Camera fact', 'Interpretation'], [
     ['My manager moved our meeting twice this week.', 0, 'Observable and specific.'],
     ['My manager is avoiding me.', 1, 'This guesses at a motive the camera cannot record.'],

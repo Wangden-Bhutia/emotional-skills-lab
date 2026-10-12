@@ -10,9 +10,14 @@ function Shell() {
   const h = useHash();
   useEffect(() => {
     const t = st.settings.theme;
-    const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => { document.documentElement.dataset.theme = t === 'dark' || (t === 'auto' && mq.matches) ? 'dark' : 'light'; };
+    apply();
     try { localStorage.setItem('esl-theme', t); } catch { /* storage unavailable */ }
+    // Auto follows the phone live: re-apply when the OS switches between light and dark while the app is open.
+    if (t !== 'auto') return;
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
   }, [st.settings.theme]);
   useEffect(() => { document.getElementById('main')?.focus({ preventScroll: true }); }, [h]);
   const [, route, arg] = h.split('/');

@@ -140,7 +140,7 @@ export const TRADEOFFS: Record<string, { r: T[]; f?: T[] }> = {
     ['Showing care.', 'Recovery time and focus.', 'One sincere apology fits; repetition does not.']] },
   sc30: { r: [
     ['Your next attempt.', 'Little; perhaps facing more detail.', 'Most rejections.'],
-    ['Protection from rejection.', 'Future opportunities.', 'Never.'],
+    ['Momentum and a sense of action.', 'You may choose courses in a hurry, to avoid the feeling.', 'If the other courses genuinely interest you.'],
     ['Room to feel the disappointment.', 'A few days.', 'Before deciding anything big.']] },
   sc31: { r: [
     ['Your manager\'s approval.', 'Sleep and health.', 'For a rare real emergency.'],

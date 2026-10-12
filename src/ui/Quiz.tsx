@@ -11,7 +11,9 @@ export function Quiz({ items, onDone, label }: { items: CheckItem[]; onDone: (r:
   const answered = picked !== null;
   return (
     <section className="card" aria-label={label}>
+      <p className="kicker"><span aria-hidden>✅</span> Check · {label}</p>
       <p className="muted">{label}: question {i + 1} of {items.length}</p>
+      <div className="qbar" aria-hidden><span style={{ width: `${(i / items.length) * 100}%` }} /></div>
       <h3 id={`q-${it.id}`}>{it.q}</h3>
       <div role="radiogroup" aria-labelledby={`q-${it.id}`} className="opts">
         {it.options.map((o, k) => (
