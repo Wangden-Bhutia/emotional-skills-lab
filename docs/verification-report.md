@@ -29,3 +29,19 @@ Real Android install; a manual screen-reader walkthrough; session timings with r
 
 ## Compliance totals (docs/spec-compliance.md)
 105 rows: 98 pass, 7 partial, 0 fail.
+
+## UX audit fixes (13 Oct 2026, v1.2.0)
+Source: the UX/UI/content audit of 13 Oct 2026. Tests added: tests/e2e/ux.spec.ts and tests/unit/{distractors,duplicates,scenarioFeedback,durations}.test.ts.
+1. A failed checkpoint shows "Checkpoint not passed yet", never "complete". Retake is the primary button. The Programme marks it ◐ "attempted · not yet mastered". (Completion still unlocks the next session; mastery is reported separately.)
+2. Support routes: 112, Tele-MANAS 14416 / 1-800-891-4416, and the POSH Internal Committee route (or the District Officer's Local Committee when there is no IC). Each was verified on a government source: docs/support-sources.md. The complaint time limit is omitted because it was not verified.
+3. Safety scenarios use their own labels: "Higher risk to you" / "Understandable; leaves some risk with you" / "Safety-first choice". Complying or staying quiet under coercion is never labelled "backfire", and a test enforces this.
+4. Durations are measured ranges (3–15 min) from a scripted walk-through plus published reading rates: docs/durations.md. They are below the 15–30 minute spec target, so row 5.1c stays partial.
+5. Today has one primary card, and Start sits above the fold at 360×740 (tested). "New here?" is hidden once the learner is welcomed or has a baseline.
+6. All 212 quiz, checkpoint, baseline and post items have rewritten distractors written as plausible misconceptions. A heuristic test flags extreme wording, one-word distractors and length giveaways.
+7. Near-duplicate paragraphs and sentences inside lessons were removed. An automated check runs Dice similarity at sentence level and containment at paragraph level.
+8. Every scenario option has 1–3 sentences of feedback, at least 80 characters. Each decision has a second-best option.
+9. A Learn / Try / Explain / Check step bar, with text, symbol and aria-current. Each block type has its own icon kicker and border style, so meaning never rests on colour alone.
+10. The Auto theme follows OS changes live through a matchMedia listener (tested). The focus outline around the whole page on desktop is removed.
+11. All browser confirm() calls are replaced by an accessible in-app modal dialog: Escape cancels, focus starts on the safe control and returns afterwards, and delete-all requires typing DELETE.
+
+Local results: lint clean, tsc clean, vitest 253 passed, Playwright 59 passed and 1 skipped (the measurement spec, which runs only on demand), build OK.
