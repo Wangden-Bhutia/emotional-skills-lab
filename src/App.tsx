@@ -12,6 +12,7 @@ function Shell() {
     const t = st.settings.theme;
     const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('esl-theme', t); } catch { /* storage unavailable */ }
   }, [st.settings.theme]);
   useEffect(() => { document.getElementById('main')?.focus({ preventScroll: true }); }, [h]);
   const [, route, arg] = h.split('/');
@@ -24,7 +25,7 @@ function Shell() {
     case 'review': view = <Review />; break;
     case 'journal': view = <Journal />; break;
     case 'progress': view = <Progress />; break;
-    case 'assess': view = <AssessView key={arg} kind={arg as 'baseline'} />; break;
+    case 'assess': view = ['baseline', 'post', 'followup2', 'followup6'].includes(arg) ? <AssessView key={arg} kind={arg as 'baseline'} /> : <p>Unknown check.</p>; break;
     case 'library': view = <Library id={arg} />; break;
     case 'settings': view = <Settings />; break;
     case 'help': view = <Help />; break;

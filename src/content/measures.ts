@@ -23,3 +23,21 @@ export const SJT_ITEMS: CheckItem[] = [
   { id: 'sjt7', q: 'Waiting for an important decision, you keep refreshing email. A better plan is...', options: ['Refresh more often', 'Check at two set times and do one valued activity', 'Assume rejection', 'Call them hourly'], answer: 1, why: 'Containment and valued action.' },
   { id: 'sjt8', q: 'You feel guilty after saying no to an extra task. This means...', options: ['You were wrong', 'Guilt is a common feeling and not proof you were wrong', 'You should apologise and accept', 'Nothing at all'], answer: 1, why: 'Feeling is not verdict.' },
 ];
+export const GOALS = [
+  'Stay calmer when criticised',
+  'React less impulsively when angry',
+  'Worry or ruminate less',
+  'Handle conflict at home better',
+  'Keep composure under pressure at work',
+  'Set boundaries without guilt or escalation',
+  'Understand my recurring patterns',
+];
+/** Knowledge items for baseline/post/follow-ups: original items, kept separate from lesson items so results are not inflated by practice. */
+export const KNOWLEDGE_ITEMS: CheckItem[] = [
+  { id: 'kn1', q: 'Which is a camera fact rather than an interpretation?', options: ['He was rude', 'He left without saying goodbye', 'He does not like me', 'He was in a bad mood'], answer: 1, why: 'Only leaving without a goodbye could be recorded.' },
+  { id: 'kn2', q: 'At very high anger (9 out of 10), what usually works best first?', options: ['A detailed reappraisal', 'Lowering intensity, for example a pause', 'Venting loudly', 'Making a decision fast'], answer: 1, why: 'Complex thinking is hard at peak intensity.' },
+  { id: 'kn3', q: 'Rumination differs from reflection mainly because rumination...', options: ['Is shorter', 'Repeats abstract "why" questions without progress', 'Is always about others', 'Leads to plans'], answer: 1, why: 'Reflection is concrete and leads somewhere.' },
+  { id: 'kn4', q: 'An if-then plan links...', options: ['A goal to a reward', 'A specific cue to a specific action', 'A feeling to a fact', 'A person to a boundary'], answer: 1, why: 'Implementation intentions specify cue and action.' },
+  { id: 'kn5', q: 'When you validate someone who is upset, you are mainly...', options: ['Agreeing completely', 'Acknowledging a feeling and why it makes sense', 'Fixing the problem', 'Staying silent'], answer: 1, why: 'It is acknowledgement, not agreement.' },
+  { id: 'kn6', q: 'Which statement about suppression fits the evidence summarised in this app?', options: ['Always harmful', 'Habitual suppression is associated with poorer outcomes than habitual reappraisal', 'Better than every other strategy', 'Has never been studied'], answer: 1, why: 'Correlational evidence about habits.' },
+];

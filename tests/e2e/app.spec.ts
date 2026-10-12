@@ -2,19 +2,40 @@ import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { SESSIONS } from '../../src/content/sessions';
 import { SCENARIOS } from '../../src/content/scenarios';
+import { SJT_ITEMS, KNOWLEDGE_ITEMS } from '../../src/content/measures';
 
-async function answerQuiz(page: Page, items: { options: string[]; answer: number }[], correct = true) {
-  for (const it of items) {
+const ITEMS = [...SESSIONS.flatMap(s => [...s.checks, ...s.altChecks]), ...SJT_ITEMS, ...KNOWLEDGE_ITEMS];
+/** Answers whatever items the app shows (checkpoints draw from a pool), looking each up by its question text. */
+async function answerQuiz(page: Page, correct = true) {
+  for (;;) {
+    const btn = page.getByRole('button', { name: /^(Next question|Finish)$/ });
+    const label = await page.locator('section[aria-label] > p.muted').first().textContent();
+    const q = (await page.locator('section[aria-label] h3').first().textContent())!.trim();
+    const it = ITEMS.find(i => i.q === q)!;
+    if (!it) throw new Error('unknown item ' + q);
     const pick = correct ? it.answer : (it.answer + 1) % it.options.length;
     await page.getByRole('radio', { name: it.options[pick], exact: true }).click();
-    await page.getByRole('button', { name: /Next question|Finish/ }).click();
+    const last = /question (\d+) of \1$/.test(label!.trim());
+    await btn.click();
+    if (last) break;
   }
 }
+async function doActivity(page: Page) {
+  const act = page.locator('section.activity');
+  if (!(await act.count())) return;
+  for (const fs of await act.locator('fieldset').all()) await fs.getByRole('radio').first().check();
+  for (const sel of await act.locator('select').all()) await sel.selectOption({ index: 1 });
+  const opt = act.getByRole('radio');
+  if (!(await act.locator('fieldset').count()) && (await opt.count())) await opt.first().click();
+  const check = act.getByRole('button', { name: /^Check/ });
+  if (await check.count()) await check.click();
+}
 async function doSession(page: Page, id: string, correct = true) {
-  const s = SESSIONS.find(x => x.id === id)!;
   await page.goto(`./#/session/${id}`);
-  await page.getByRole('button', { name: /Check your understanding|Start checkpoint/ }).click();
-  await answerQuiz(page, s.checks, correct);
+  await doActivity(page);
+  await page.getByRole('button', { name: 'Next: explain it back' }).click();
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  await answerQuiz(page, correct);
   await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
   await page.getByRole('button', { name: 'Save and continue' }).click();
 }
@@ -39,13 +60,16 @@ test('lesson completion persists and unlocks next; completion is not mastery', a
 
 test('week 1 checkpoint at 100% masters phase 1; failing shows retake', async ({ page }) => {
   for (const id of ['w01d1', 'w01d2', 'w01d3', 'w01d4']) await doSession(page, id);
-  const s = SESSIONS.find(x => x.id === 'w01d5')!;
   await page.goto('./#/session/w01d5');
-  await page.getByRole('button', { name: 'Start checkpoint' }).click();
-  await answerQuiz(page, s.checks, false);
+  await page.getByRole('button', { name: 'Next: explain it back' }).click();
+  await page.getByRole('button', { name: 'Skip for now' }).click();
+  const first = await page.locator('section[aria-label] h3').first().textContent();
+  await answerQuiz(page, false);
   await expect(page.getByText(/Below the 80% mastery threshold/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Remediation' })).toBeVisible();
   await page.getByRole('button', { name: 'Retake checkpoint' }).click();
-  await answerQuiz(page, s.checks, true);
+  expect(await page.locator('section[aria-label] h3').first().textContent()).not.toBe(first);
+  await answerQuiz(page, true);
   await expect(page.getByText(/Phase mastered/)).toBeVisible();
   await page.goto('./#/progress');
   await expect(page.getByText('1 of 9 phases')).toBeVisible();
@@ -56,13 +80,86 @@ test('locked sessions cannot be opened', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Locked' })).toBeVisible();
 });
 
-test('baseline assessment saves', async ({ page }) => {
+test('baseline assessment saves goals, confidence, knowledge and situations separately', async ({ page }) => {
   await page.getByRole('button', { name: 'Take baseline' }).click();
+  await page.getByLabel('Worry or ruminate less').check();
   for (const fs of await page.locator('fieldset.rating').all()) await fs.getByText('Often').click();
   await page.getByRole('button', { name: 'Continue' }).click();
-  for (let i = 0; i < 8; i++) { await page.getByRole('radio').nth(1).click(); await page.getByRole('button', { name: /Next question|Finish/ }).click(); }
+  await answerQuiz(page, true);
+  await answerQuiz(page, true);
   await page.getByRole('button', { name: 'See progress' }).click();
   await expect(page.getByRole('cell', { name: '8/8' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '6/6' })).toBeVisible();
+  await expect(page.getByText(/baseline goals: Worry or ruminate less/)).toBeVisible();
+});
+
+test('lesson has keyboard-operable activity with per-item feedback and explain-back rubric', async ({ page }) => {
+  await doSession(page, 'w01d1'); await doSession(page, 'w01d2');
+  await page.goto('./#/session/w01d3');
+  const act = page.locator('section.activity');
+  await expect(act.getByText('Activity · Sort it')).toBeVisible();
+  await act.getByRole('radio').first().focus(); await page.keyboard.press('Space');
+  for (const fs of await act.locator('fieldset').all()) await fs.getByRole('radio').first().check();
+  await act.getByRole('button', { name: 'Check answers' }).click();
+  await expect(act.getByText('A deliberate, time-limited choice followed by processing is flexible.')).toBeVisible();
+  await expect(act.getByText(/Better fit: Flexible regulation/).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Next: explain it back' }).click();
+  await expect(page.getByText('This app does not read, score or grade what you write.', { exact: false })).toBeVisible();
+  await page.getByLabel('Your explanation').fill('Suppression means hiding a feeling while still feeling it. Doing it as a habit tends to cost more than flexible choices.');
+  await page.getByRole('button', { name: 'Compare with model key points' }).click();
+  await expect(page.getByText('Suppression hides expression while the feeling continues.')).toBeVisible();
+  for (const fs of await page.locator('fieldset.rating').all()) await fs.getByText('Partly').click();
+  await page.getByRole('button', { name: 'Revise my explanation' }).click();
+  await expect(page.getByLabel('Your explanation')).toHaveValue(/Suppression/);
+  await page.getByRole('button', { name: 'Compare with model key points' }).click();
+  for (const fs of await page.locator('fieldset.rating').all()) await fs.getByText('Yes').click();
+  await page.getByRole('button', { name: 'Save self-assessment' }).click();
+  await expect(page.getByText(/Knowledge check: question 1/)).toBeVisible();
+});
+
+test('sequence activity works with move buttons only', async ({ page }) => {
+  await doSession(page, 'w01d1');
+  await page.goto('./#/session/w01d2');
+  const act = page.locator('section.activity');
+  await act.getByRole('button', { name: /^Move down:/ }).first().click();
+  await act.getByRole('button', { name: 'Check order' }).click();
+  await expect(act.getByText(/Right place|Belongs at position/).first()).toBeVisible();
+});
+
+test('branching scenario: follow-up depends on first choice; transfer question', async ({ page }) => {
+  const s = SCENARIOS.find(x => x.id === 'sc35')!;
+  await page.goto('./#/gym/sc35');
+  await page.getByRole('button', { name: 'Check' }).click(); await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByLabel(s.emotionOptions[0]).check(); await page.getByRole('button', { name: 'Check' }).click(); await page.getByRole('button', { name: 'Next' }).click();
+  const best = s.responses.findIndex(r => r.quality === 2);
+  await page.getByRole('button', { name: s.responses[best].text }).click();
+  await page.getByRole('button', { name: 'What happens next' }).click();
+  await expect(page.getByText(s.followUp!.next[best])).toBeVisible();
+  await page.getByRole('button', { name: s.followUp!.options[0].text }).click();
+  await expect(page.getByText(s.followUp!.options[0].feedback)).toBeVisible();
+  await page.getByRole('button', { name: 'Next: reflect' }).click();
+  await page.getByLabel(/Which recent message/).fill('My sister text');
+  await page.getByRole('button', { name: 'Save to journal and finish' }).click();
+  await page.goto('./#/journal'); await expect(page.getByText(/Gym, Argument with partner: My sister text/)).toBeVisible();
+});
+
+test('gym filters by situation, skill and difficulty', async ({ page }) => {
+  await page.goto('./#/gym');
+  await page.getByLabel('Situation').selectOption({ label: 'Interpersonal misunderstanding' });
+  await expect(page.getByText(`${SCENARIOS.filter(s => s.category === 'misunderstanding').length} scenarios shown.`)).toBeVisible();
+  await page.getByLabel('Difficulty').selectOption({ label: 'Easier' });
+  await expect(page.getByText(`${SCENARIOS.filter(s => s.category === 'misunderstanding' && s.difficulty === 1).length} scenarios shown.`)).toBeVisible();
+  await page.getByLabel('Situation').selectOption({ label: 'All' }); await page.getByLabel('Difficulty').selectOption({ label: 'All' });
+  await page.getByLabel('Skill').selectOption('Boundaries');
+  await expect(page.getByText(`${SCENARIOS.filter(s => s.skill === 'Boundaries').length} scenarios shown.`)).toBeVisible();
+});
+
+test('theme is applied before app script runs (no flash) under CSP', async ({ page }) => {
+  await page.goto('./#/settings'); await page.getByRole('button', { name: 'Dark' }).click();
+  await page.route('**/assets/*.js', r => new Promise(res => setTimeout(() => res(r.continue()), 1500)));
+  await page.reload({ waitUntil: 'commit' });
+  await page.waitForSelector('html[data-theme]', { timeout: 1200 });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
 test('gym scenario full flow records an attempt', async ({ page }) => {
@@ -83,7 +180,7 @@ test('gym scenario full flow records an attempt', async ({ page }) => {
   await expect(page.getByText('100%').first()).toBeVisible();
 });
 
-test('journal add and delete', async ({ page }) => {
+test('journal add, edit and delete individual entry', async ({ page }) => {
   await page.goto('./#/journal');
   await page.getByRole('button', { name: 'Quick check-in' }).click();
   await page.getByRole('button', { name: 'Frustration' }).click();
@@ -92,8 +189,14 @@ test('journal add and delete', async ({ page }) => {
   await expect(page.getByText('slow morning')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Frustration 5')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit entry' }).click();
+  await page.getByLabel('One line (optional)').fill('slow but fine morning');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('slow but fine morning')).toBeVisible();
+  await expect(page.getByText(/edited/)).toBeVisible();
+  page.on('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Delete entry' }).click();
-  await expect(page.getByText('slow morning')).toHaveCount(0);
+  await expect(page.getByText('slow but fine morning')).toHaveCount(0);
 });
 
 test('export, delete all, import restores', async ({ page }) => {
@@ -129,7 +232,7 @@ test('theme toggle switches to dark', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
-for (const h of ['#/', '#/programme', '#/session/w01d1', '#/gym', '#/gym/sc01', '#/journal', '#/progress', '#/library', '#/settings', '#/help', '#/assess/baseline']) {
+for (const h of ['#/', '#/programme', '#/session/w01d1', '#/gym/sc35', '#/gym', '#/gym/sc01', '#/journal', '#/progress', '#/library', '#/settings', '#/help', '#/assess/baseline']) {
   test(`a11y + no horizontal overflow at 360px: ${h}`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto('./' + h);

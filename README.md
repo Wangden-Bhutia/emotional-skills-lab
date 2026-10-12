@@ -1,6 +1,6 @@
 # Emotional Skills Lab
 
-A private, offline-capable emotional-skills training app: 12-week programme (60 sessions, 9 phases), 36-scenario gym, three-layer assessment (completion, mastery, retention), journal, research library.
+A private, offline-capable emotional-skills training app: 12-week programme (60 sessions, 9 phases, about 18 to 26 minutes each), 40-scenario gym with branching follow-ups, per-session interactive activities and explanation-back, phase and per-skill mastery with alternative item pools, spaced retention reviews, journal, research library.
 
 Live: https://wangden-bhutia.github.io/emotional-skills-lab/
 
@@ -9,8 +9,8 @@ Live: https://wangden-bhutia.github.io/emotional-skills-lab/
 - Offline: generated service worker precaches every built file (`scripts/gen-sw.mjs`).
 - Content: typed data in `src/content`; `tests/unit/content.test.ts` enforces completeness and source traceability.
 - Tests: `npm test` (Vitest), `npm run build && npm run test:e2e` (Playwright, incl. axe WCAG 2.2 AA scan and offline test). CI runs both before deploying to Pages.
-- Research: see `docs/research-register.md`.
+- Docs: `docs/spec-compliance.md` (requirement checklist), `docs/curriculum-and-assessment.md`, `docs/research-methodology.md`, `docs/research-register.md`, `docs/privacy.md`, `docs/android.md`, `docs/verification-report.md`.
 
 Not therapy, not clinically validated. In an emergency in India dial 112.
 
-Android migration: wrap the PWA with a Trusted Web Activity (Bubblewrap) first; for a native rewrite, port `src/content` and `src/engine` as-is and implement `KVStorage` on Room/SQLite.
+Android migration: see `docs/android.md`.
