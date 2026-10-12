@@ -4,11 +4,11 @@ import type { CheckItem, PhaseId } from '../content/types';
 
 export const MASTERY_THRESHOLD = 0.8; // design choice, not research-derived
 export const REVIEW_INTERVALS_DAYS = [2, 7, 21];
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const DAY = 86400000;
 
 export interface ItemState { stage: number; due: number; reviews: { at: number; correct: boolean }[] }
-export interface ScenarioAttempt { scenarioId: string; at: number; emotions: number[]; response: number; quality: 0 | 1 | 2; factsOk: boolean }
+export interface ScenarioAttempt { scenarioId: string; at: number; emotions: number[]; response: number; quality: 0 | 1 | 2; factsOk: boolean; followUp?: number; followUpQuality?: 0 | 1 | 2 }
 export interface JournalEntry {
   id: string; at: number; type: 'checkin' | 'reflection' | 'plan';
   emotions: { name: string; intensity: number }[]; trigger?: string; facts?: string; interpretation?: string;
@@ -29,7 +29,11 @@ export interface AppState {
   scenarios: ScenarioAttempt[];
   journal: JournalEntry[];
   assessments: Assessment[];
-  settings: { theme: 'auto' | 'light' | 'dark'; reducedMotion: boolean; followups?: { enabled: boolean; postponedUntil?: number } };
+  settings: { theme: 'auto' | 'light' | 'dark'; reducedMotion: boolean; followups?: { enabled: boolean; postponedUntil?: number }; journalPrompts?: boolean; welcomed?: boolean };
+  /** Lessons left mid-way, so progress survives close or reload (spec 9.4). */
+  inProgress?: Record<string, { stage: 'explain' | 'check'; at: number }>;
+  /** Added in schema 2. */
+  meta?: { createdAt: number; migratedFrom?: number[] };
   /** Every answered item with context, used for per-skill mastery and item rotation. */
   itemLog?: Record<string, { at: number; correct: boolean; ctx: Ctx }[]>;
   /** Explanation-back records per session (text stays on device; never graded by the app). */
@@ -38,7 +42,7 @@ export interface AppState {
 }
 export const emptyState = (): AppState => ({
   schema: SCHEMA_VERSION, completed: {}, phaseResults: {}, items: {}, scenarios: [], journal: [], assessments: [],
-  settings: { theme: 'auto', reducedMotion: false },
+  settings: { theme: 'auto', reducedMotion: false }, meta: { createdAt: Date.now() },
 });
 
 export const ALL_ITEMS: Record<string, CheckItem> = Object.fromEntries(SESSIONS.flatMap(s => [...s.checks, ...s.altChecks].map(c => [c.id, c])));
@@ -169,14 +173,3 @@ export function remediationFor(res: Record<string, boolean>): string[] {
   return [...new Set(Object.entries(res).filter(([, v]) => !v).map(([k]) => ITEM_SKILL[k]).filter(Boolean))];
 }
 
-/** Export / import with validation */
-export function exportData(st: AppState) { return JSON.stringify({ app: 'emotional-skills-lab', exportedAt: new Date().toISOString(), state: st }, null, 2); }
-export function importData(json: string): AppState {
-  const o = JSON.parse(json);
-  if (o?.app !== 'emotional-skills-lab' || typeof o.state !== 'object') throw new Error('Not an Emotional Skills Lab export file.');
-  const s = o.state as AppState;
-  if (s.schema !== SCHEMA_VERSION) throw new Error(`Unsupported data version ${s.schema}.`);
-  for (const k of ['completed', 'phaseResults', 'items'] as const) if (typeof s[k] !== 'object') throw new Error(`Missing ${k}.`);
-  for (const k of ['scenarios', 'journal', 'assessments'] as const) if (!Array.isArray(s[k])) throw new Error(`Missing ${k}.`);
-  return { ...emptyState(), ...s };
-}

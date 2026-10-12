@@ -4,41 +4,7 @@ import { SESSIONS } from '../../src/content/sessions';
 import { SCENARIOS } from '../../src/content/scenarios';
 import { SJT_ITEMS, KNOWLEDGE_ITEMS } from '../../src/content/measures';
 
-const ITEMS = [...SESSIONS.flatMap(s => [...s.checks, ...s.altChecks]), ...SJT_ITEMS, ...KNOWLEDGE_ITEMS];
-/** Answers whatever items the app shows (checkpoints draw from a pool), looking each up by its question text. */
-async function answerQuiz(page: Page, correct = true) {
-  for (;;) {
-    const btn = page.getByRole('button', { name: /^(Next question|Finish)$/ });
-    const label = await page.locator('section[aria-label] > p.muted').first().textContent();
-    const q = (await page.locator('section[aria-label] h3').first().textContent())!.trim();
-    const it = ITEMS.find(i => i.q === q)!;
-    if (!it) throw new Error('unknown item ' + q);
-    const pick = correct ? it.answer : (it.answer + 1) % it.options.length;
-    await page.getByRole('radio', { name: it.options[pick], exact: true }).click();
-    const last = /question (\d+) of \1$/.test(label!.trim());
-    await btn.click();
-    if (last) break;
-  }
-}
-async function doActivity(page: Page) {
-  const act = page.locator('section.activity');
-  if (!(await act.count())) return;
-  for (const fs of await act.locator('fieldset').all()) await fs.getByRole('radio').first().check();
-  for (const sel of await act.locator('select').all()) await sel.selectOption({ index: 1 });
-  const opt = act.getByRole('radio');
-  if (!(await act.locator('fieldset').count()) && (await opt.count())) await opt.first().click();
-  const check = act.getByRole('button', { name: /^Check/ });
-  if (await check.count()) await check.click();
-}
-async function doSession(page: Page, id: string, correct = true) {
-  await page.goto(`./#/session/${id}`);
-  await doActivity(page);
-  await page.getByRole('button', { name: 'Next: explain it back' }).click();
-  await page.getByRole('button', { name: 'Skip for now' }).click();
-  await answerQuiz(page, correct);
-  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-}
+import { answerQuiz, doSession } from './helpers';
 
 test.beforeEach(async ({ page }) => { await page.goto('./'); await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible(); });
 
@@ -210,7 +176,8 @@ test('export, delete all, import restores', async ({ page }) => {
   await page.goto('./'); await expect(page.getByRole('heading', { name: 'What emotions are for' })).toBeVisible();
   await page.goto('./#/settings');
   await page.locator('input[type=file]').setInputFiles(file!);
-  await expect(page.getByText('Import complete.')).toBeVisible();
+  await page.getByRole('button', { name: 'Replace current data' }).click();
+  await expect(page.getByText(/Import complete\./)).toBeVisible();
   await page.goto('./'); await expect(page.getByRole('heading', { name: 'The emotion chain' })).toBeVisible();
 });
 
@@ -222,7 +189,7 @@ test('import rejects invalid file', async ({ page }) => {
 
 test('library shows verified sources with DOI links', async ({ page }) => {
   await page.goto('./#/library');
-  await expect(page.getByText('DOI verified')).toHaveCount(20);
+  await expect(page.getByText('DOI verified')).toHaveCount(23);
   await expect(page.getByRole('link', { name: 'doi:10.1037/1089-2680.2.3.271' })).toBeVisible();
 });
 
@@ -232,7 +199,7 @@ test('theme toggle switches to dark', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 });
 
-for (const h of ['#/', '#/programme', '#/session/w01d1', '#/gym/sc35', '#/gym', '#/gym/sc01', '#/journal', '#/progress', '#/library', '#/settings', '#/help', '#/assess/baseline']) {
+for (const h of ['#/', '#/welcome', '#/assess', '#/programme', '#/session/w01d1', '#/gym/sc35', '#/gym/sc41', '#/gym', '#/gym/sc01', '#/journal', '#/progress', '#/library', '#/settings', '#/help', '#/assess/baseline']) {
   test(`a11y + no horizontal overflow at 360px: ${h}`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto('./' + h);

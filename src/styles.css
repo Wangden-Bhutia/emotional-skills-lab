@@ -58,3 +58,8 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left
 .notice{border-left:4px solid var(--mid);padding-left:8px}
 .filters{display:grid;gap:8px;grid-template-columns:1fr 1fr}.filters select{width:100%}
 select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);max-width:100%}
+.tradeoff{display:grid;gap:.25rem;margin:.4rem 0 0}
+.tradeoff div{display:grid;grid-template-columns:5.5rem 1fr;gap:.5rem}
+.tradeoff dt{font-weight:600}
+.tradeoff dd{margin:0}
+.card.safety{border-left:4px solid var(--mid)}

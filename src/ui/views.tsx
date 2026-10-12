@@ -14,12 +14,18 @@ import { ExplainBack } from './ExplainBack';
 import {
   checkpointItems, lessonItems, retakeLesson, remediationFor, skillStatus, SKILL_SESSIONS, ITEM_SKILL, postponeFollowup, FOLLOWUP_DAYS,
   ALL_ITEMS, MASTERY_THRESHOLD, REVIEW_INTERVALS_DAYS, answerReview, completeSession, dueReviews, emotionFrequency,
-  exportData, followupDue, importData, isUnlocked, metrics, nextSession, phaseMastered, emptyState,
+  followupDue, isUnlocked, metrics, nextSession, phaseMastered, emptyState,
   type Assessment, type JournalEntry,
 } from '../engine/state';
-import { deleteAll } from '../storage/repo';
+import { deleteAll, backupBeforeImport, readPreImportBackup } from '../storage/repo';
+import { exportData, importData, mergeStates, summarise, DataError } from '../engine/data';
+import { EVIDENCE, USE_LABEL } from '../content/evidence';
+import { SAFETY_NOTE } from '../content/safetyScenarios';
+import type { AppState } from '../engine/state';
+import type { TradeOff } from '../content/types';
 import { InstallCard } from './install';
 
+export const APP_VERSION = '1.1.0';
 export const go = (h: string) => { location.hash = h; };
 const pct = (x: number | null) => (x === null ? 'No data yet' : `${Math.round(x * 100)}%`);
 const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -27,33 +33,76 @@ const claimSource = (cid: string) => SOURCES.find(s => s.claims.some(c => c.id =
 const EMOTIONS = ['Anger', 'Irritation', 'Frustration', 'Anxiety', 'Fear', 'Sadness', 'Disappointment', 'Hurt', 'Shame', 'Guilt', 'Embarrassment', 'Resentment', 'Overwhelm', 'Calm', 'Content', 'Joy', 'Pride', 'Relief', 'Gratitude', 'Curiosity'];
 
 export function Home() {
-  const { st, update } = useApp();
+  const { st, update, notice, clearNotice } = useApp();
   const fu = followupDue(st);
   const ns = nextSession(st);
   const due = dueReviews(st).length;
   const m = metrics(st);
   const baseline = st.assessments.some(a => a.kind === 'baseline');
+  const phase = ns ? PHASES[ns.phase - 1] : undefined;
+  const priorities = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').slice(0, 3);
+  const prevIdx = ns ? SESSIONS.indexOf(ns) - 1 : -1;
+  const why = ns && (ns.prerequisites.length ? `It builds on ${ns.prerequisites.map(p => SESSIONS.find(x => x.id === p)?.title).filter(Boolean).join(' and ')}.` : prevIdx < 0 ? 'It is the first session.' : `It follows ${SESSIONS[prevIdx].title}.`);
+  const action = due ? `Do your ${due} due review${due > 1 ? 's' : ''} (a few minutes), then continue the programme.` : priorities.length ? `Revisit "${priorities[0].title}" before your next checkpoint.` : ns ? `Start "${ns.title}" when you have about ${ns.minutes} minutes.` : 'Try an unfamiliar gym scenario or a review.';
   return (<>
     <h1>Today</h1>
+    {notice && <div className="card warn" role="alert"><h2>Your saved data could not be read</h2><p>{notice}</p><button onClick={clearNotice}>Dismiss</button></div>}
+    {!st.settings.welcomed && <div className="card accent"><h2>New here?</h2><p>Read a short introduction: what this app can and cannot do, how long it takes, and how your data is stored.</p><div className="row-btns"><button className="primary" onClick={() => go('#/welcome')}>Read the introduction</button><button onClick={() => update(x => ({ ...x, settings: { ...x.settings, welcomed: true } }))}>Skip</button></div></div>}
     <InstallCard />
-    {!baseline && <div className="card accent"><h2>Start with a baseline</h2><p>A 3-minute snapshot so you can compare later. It is optional and stays on this device.</p><button className="primary" onClick={() => go('#/assess/baseline')}>Take baseline</button></div>}
+    {!baseline && <div className="card accent"><h2>Start with a baseline</h2><p>An 8 to 12 minute snapshot so you can compare later. It is optional and stays on this device.</p><button className="primary" onClick={() => go('#/assess/baseline')}>Take baseline</button></div>}
     {fu && <div className="card accent"><h2>Follow-up is due</h2><p>A short check about {fu === 'followup2' ? 2 : 6} weeks after the programme. Optional.</p><div className="row-btns"><button className="primary" onClick={() => go(`#/assess/${fu}`)}>Take follow-up</button><button onClick={() => update(x => postponeFollowup(x))}>Postpone a week</button></div></div>}
-    {ns ? <div className="card"><p className="muted">Week {ns.week}, day {ns.day} · {PHASES[ns.phase - 1].title} · about {ns.minutes} min</p><h2>{ns.title}</h2><p>{ns.objective}</p>
-      <button className="primary" onClick={() => go(`#/session/${ns.id}`)}>Start session</button></div>
+    <section className="card" aria-labelledby="next-h"><p className="muted small">Next action</p><p className="lead">{action}</p></section>
+    {ns ? <section className="card" aria-labelledby="next-h"><p className="muted">Current phase {ns.phase}: {phase!.title} · Week {ns.week}, day {ns.day} · about {ns.minutes} min</p><h2 id="next-h">{ns.title}</h2><p>{ns.objective}</p>
+      <p className="small muted">Why this next: {why}</p>
+      <button className="primary" onClick={() => go(`#/session/${ns.id}`)}>Start session</button></section>
       : <div className="card"><h2>Programme complete</h2><p>Keep skills fresh with reviews and the gym.</p>{!st.assessments.some(a => a.kind === 'post') && <button className="primary" onClick={() => go('#/assess/post')}>Take post-programme check</button>}</div>}
+    <section className="card"><h2>Learning priorities</h2>{priorities.length ? <ul>{priorities.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: latest delayed answers were below the mastery threshold.</li>)}</ul> : <p className="small">No skill is currently flagged for extra practice.</p>}</section>
     <div className="grid2">
       <button className="tile" onClick={() => go('#/review')}><strong>{due}</strong><span>reviews due</span></button>
-      <button className="tile" onClick={() => go('#/gym')}><strong>{SCENARIOS.length}</strong><span>gym scenarios</span></button>
-      <button className="tile" onClick={() => go('#/journal')}><strong>{st.journal.length}</strong><span>journal entries</span></button>
-      <button className="tile" onClick={() => go('#/progress')}><strong>{m.masteredPhases}/9</strong><span>phases mastered</span></button>
+      <button className="tile" onClick={() => go('#/progress')}><strong>{m.masteredSkills}/{SKILL_SESSIONS.length}</strong><span>skills at mastery threshold</span></button>
+      <button className="tile" onClick={() => go('#/programme')}><strong>{Object.keys(st.completed).length}/{SESSIONS.length}</strong><span>sessions completed</span></button>
+      <button className="tile" onClick={() => go('#/assess')}><strong>Checks</strong><span>assessment centre</span></button>
     </div>
-    <p className="muted small">This is skills training, not therapy or crisis care. In an emergency in India, dial 112. <a href="#/help">More on safety</a></p>
+    <p className="muted small">This is skills training, not therapy or crisis care. If you are in danger, contact local emergency services. <a href="#/help">More on safety</a></p>
+  </>);
+}
+
+export function Welcome() {
+  const { update } = useApp();
+  return (<><h1>Welcome to Emotional Skills Lab</h1>
+    <section className="card"><h2>What it is</h2><p>A private training programme for noticing, understanding and choosing how to respond to everyday emotions, criticism, conflict and pressure. You learn a skill, practise it, show it in short checks, and review it later.</p></section>
+    <section className="card"><h2>What it can and cannot do</h2><ul><li>It can teach and let you practise skills drawn from published research on emotion regulation and learning.</li><li>It cannot diagnose, treat or replace professional care, and it has not been tested as an intervention. No app, including this one, works the same for everyone.</li><li>It never reads or grades your writing. Scores come only from multiple-choice and scenario answers, using fixed rules you can see.</li></ul></section>
+    <section className="card"><h2>The pathway</h2><p>12 weeks, 9 phases, {SESSIONS.length} sessions of about 15 to 30 minutes (estimated, not measured), five a week. Going slower is fine; nothing expires and nothing is penalised.</p></section>
+    <section className="card"><h2>Training, assessment and care are different</h2><p>Lessons and the gym are training. Checkpoints, reviews and the baseline are assessment of what you can show in this app. Neither is clinical care. If you are struggling, a qualified professional is the right support.</p></section>
+    <section className="card"><h2>Your data</h2><p>Everything stays in this browser on this device. It is not encrypted and nothing is sent anywhere. Clearing browser data or private browsing can erase it, and anyone using this device could open it. Export a backup from Settings now and then.</p></section>
+    <div className="row-btns"><button className="primary" onClick={() => { update(x => ({ ...x, settings: { ...x.settings, welcomed: true } })); go('#/assess/baseline'); }}>Set goals and take the baseline</button>
+      <button onClick={() => { update(x => ({ ...x, settings: { ...x.settings, welcomed: true } })); go('#/'); }}>Go to Today</button></div>
+    <p className="small muted">You can reopen this page any time from Settings.</p>
+  </>);
+}
+
+export function AssessCentre() {
+  const { st } = useApp();
+  const due = dueReviews(st).length; const fu = followupDue(st);
+  const has = (k: Assessment['kind']) => st.assessments.some(a => a.kind === k);
+  const cps = SESSIONS.filter(s => s.kind === 'checkpoint');
+  return (<><h1>Assessment centre</h1>
+    <section className="card"><h2>How scoring works</h2><ul className="small"><li>Lesson checks: completion only. Finishing a lesson does not mean mastery.</li><li>Checkpoints: rule-scored items from the phase plus two from earlier phases. {MASTERY_THRESHOLD * 100}% or more marks the phase mastered (a design choice, not a validated cutoff). Retakes draw different items.</li><li>Skill mastery: your latest delayed answers (checkpoints and reviews) on at least 2 items of a skill.</li><li>Explain-it-back: you compare your own words with a rubric. The app does not grade it.</li><li>Reviews: items return after {REVIEW_INTERVALS_DAYS.join(', ')} days. A miss sends the item back to the first interval.</li></ul></section>
+    <section className="card"><h2>Delayed retrieval</h2><p>{due} review item{due === 1 ? '' : 's'} due.</p><button onClick={() => go('#/review')}>Open reviews</button></section>
+    <section className="card"><h2>Phase checkpoints (cumulative)</h2><ul className="list">{cps.map(c => { const r = st.phaseResults[c.phase] ?? []; return <li key={c.id}><a href={`#/session/${c.id}`}>Phase {c.phase}: {PHASES[c.phase - 1].title}</a> <span className="badge">{phaseMastered(st, c.phase) ? 'Mastered' : r.length ? `${r.length} attempt${r.length > 1 ? 's' : ''}, retake available` : isUnlocked(st, c.id) ? 'Available' : 'Locked'}</span></li>; })}</ul></section>
+    <section className="card"><h2>Remediation</h2>{SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').map(s => <p key={s.id}><a href={`#/session/${s.id}`}>{s.title}</a></p>)}{!SKILL_SESSIONS.some(s => skillStatus(st, s.id).status === 'needs practice') && <p className="small">Nothing flagged. Missed checkpoint questions link back to the lesson that teaches them.</p>}</section>
+    <section className="card"><h2>Baseline, post-programme and follow-ups</h2><ul className="list">
+      <li><a href="#/assess/baseline">Baseline</a> <span className="badge">{has('baseline') ? 'Taken' : 'Not taken'}</span></li>
+      <li>{nextSession(st) ? <>Post-programme <span className="small muted">(unlocks after all sessions)</span></> : <a href="#/assess/post">Post-programme</a>} <span className="badge">{has('post') ? 'Taken' : 'Not taken'}</span></li>
+      <li>Follow-ups at about 2 and 6 weeks <span className="badge">{fu ? 'Due' : has('followup6') ? 'Done' : 'Not due'}</span></li></ul>
+      <p className="small muted">Original, non-validated educational items. Results are shown separately and are not a diagnosis.</p></section>
   </>);
 }
 
 export function Programme() {
   const { st } = useApp();
-  return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order.</p>
+  return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order; completed ones stay open to revisit without changing your place.</p>
+    {nextSession(st) && <p className="card small">Next: <a href={`#/session/${nextSession(st)!.id}`}>{nextSession(st)!.title}</a>, because sessions build on the one before. Each row shows completion and, for skills, mastery status.</p>}
     {PHASES.map(p => (
       <section key={p.id} className="card">
         <h2>Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
@@ -61,7 +110,7 @@ export function Programme() {
         <ul className="list">{SESSIONS.filter(s => s.phase === p.id).map(s => {
           const done = !!st.completed[s.id], open = isUnlocked(st, s.id);
           return <li key={s.id}><button disabled={!open} onClick={() => go(`#/session/${s.id}`)} className="row">
-            <span aria-hidden>{done ? '✓' : open ? '○' : '🔒'}</span><span>W{s.week}D{s.day} · {s.title}<span className="sr-only">{done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}</span></button></li>;
+            <span aria-hidden>{done ? '✓' : open ? '○' : '🔒'}</span><span>W{s.week}D{s.day} · {s.title}<span className="sr-only">{done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}{done && (s.kind === 'lesson' || s.kind === 'practice') ? ` · ${skillStatus(st, s.id).status}` : ''}</span></button></li>;
         })}</ul>
       </section>))}
   </>);
@@ -78,11 +127,13 @@ function Breather() {
 export function SessionView({ id }: { id: string }) {
   const { st, update } = useApp();
   const s = SESSIONS.find(x => x.id === id);
-  const [stage, setStage] = useState<'learn' | 'explain' | 'check' | 'done'>('learn');
+  const resumed = st.inProgress?.[id];
+  const [stage, setStageRaw] = useState<'learn' | 'explain' | 'check' | 'done'>(resumed ? 'explain' : 'learn');
+  const setStage = (x: 'learn' | 'explain' | 'check' | 'done') => { setStageRaw(x); update(y => { const ip = { ...y.inProgress }; if (x === 'explain' || x === 'check') ip[id] = { stage: x, at: Date.now() }; else delete ip[id]; return { ...y, inProgress: ip }; }); };
   const [reflect, setReflect] = useState('');
   const [score, setScore] = useState<number | null>(null);
   const [missed, setMissed] = useState<string[]>([]);
-  const [actDone, setActDone] = useState(false);
+  const [actDone, setActDone] = useState(!!resumed);
   const [items, setItems] = useState<CheckItem[]>([]);
   if (!s) return <p>Session not found.</p>;
   if (!isUnlocked(st, s.id)) return <div className="card"><h1>Locked</h1><p>Finish the previous session first.</p><button onClick={() => go('#/programme')}>Programme</button></div>;
@@ -95,6 +146,7 @@ export function SessionView({ id }: { id: string }) {
     <p className="muted">Week {s.week}, day {s.day} · Phase {s.phase}: {PHASES[s.phase - 1].title} · about {s.minutes} min</p>
     <h1>{s.title}</h1><p className="lead">Goal: {s.objective}</p>
     {prev && <p className="badge">Completed {fmt(prev.at)}</p>}
+    {resumed && stage === 'explain' && <p className="card small" role="status">Resumed where you left off. <button className="link" onClick={() => setStage('learn')}>Back to the lesson</button></p>}
     {stage === 'learn' && <>
       <details className="card small"><summary>Before you start: prerequisites and time</summary>
         <p>{prereq.length ? <>Builds on: {prereq.map(p => <a key={p.id} href={`#/session/${p.id}`}>{p.title} </a>)}</> : 'No prerequisites.'}</p>
@@ -126,7 +178,7 @@ export function SessionView({ id }: { id: string }) {
         <label htmlFor="refl">Optional reflection: {s.reflect}</label>
         <textarea id="refl" value={reflect} onChange={e => setReflect(e.target.value)} rows={3} />
         <div className="row-btns"><button className="primary" onClick={() => {
-          if (reflect.trim()) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `${s.title}: ${reflect.trim()}` }, ...x.journal] }));
+          if (reflect.trim() && st.settings.journalPrompts !== false) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `${s.title}: ${reflect.trim()}` }, ...x.journal] }));
           go('#/');
         }}>Save and continue</button>
         {assess && score! < MASTERY_THRESHOLD && <button onClick={startCheck}>Retake checkpoint</button>}
@@ -142,6 +194,8 @@ export function Gym() {
   const cats = Object.keys(CATEGORY_LABELS) as ScenarioCategory[];
   const skills = [...new Set(SCENARIOS.map(s => s.skill))].sort();
   const tried = new Set(st.scenarios.map(a => a.scenarioId));
+  const last = new Map(st.scenarios.map(a => [a.scenarioId, a]));
+  const revisit = SCENARIOS.filter(s => last.get(s.id)?.quality === 0).slice(0, 5);
   const list = SCENARIOS.filter(s => (!cat || s.category === cat) && (!skill || s.skill === skill) && (!diff || s.difficulty === +diff) && (!ctx || s.context === ctx));
   return (<><h1>Scenario gym</h1><p className="muted">Practise the full chain: facts, emotions, response, and sometimes a follow-up decision. {tried.size} of {SCENARIOS.length} tried.</p>
     <section className="card filters" aria-label="Filters">
@@ -151,14 +205,19 @@ export function Gym() {
       <label className="field">Context<select value={ctx} onChange={e => setCtx(e.target.value)}><option value="">All</option><option value="everyday">Everyday</option><option value="professional">Professional</option></select></label>
     </section>
     <p role="status" className="small muted">{list.length} scenarios shown.</p>
+    {revisit.length > 0 && <section className="card"><h2>Worth another try</h2><p className="small muted">Scenarios where your last choice had clear downsides. Retrying is ordinary practice.</p><ul className="list">{revisit.map(s => <li key={s.id}><a href={`#/gym/${s.id}`}>{s.title}</a></li>)}</ul></section>}
     {cats.filter(c => list.some(s => s.category === c)).map(c => <section key={c} className="card"><h2>{CATEGORY_LABELS[c]}</h2><ul className="list">
       {list.filter(s => s.category === c).map(s => <li key={s.id}><button className="row" onClick={() => go(`#/gym/${s.id}`)}>
-        <span aria-hidden>{tried.has(s.id) ? '✓' : '○'}</span><span>{s.title}{s.followUp ? ' · branching' : ''}</span><span className="muted small">{s.context} · {DIFF[s.difficulty]}</span></button></li>)}
+        <span aria-hidden>{tried.has(s.id) ? '✓' : '○'}</span><span>{s.title}{s.followUp ? ' · branching' : ''}{s.safety ? ' · safety' : ''}</span><span className="muted small">{s.context} · {DIFF[s.difficulty]}</span></button></li>)}
     </ul></section>)}</>);
 }
 
+function TradeOffLines({ t }: { t?: TradeOff }) {
+  return t ? <dl className="tradeoff small"><div><dt>Protects</dt><dd>{t.protects}</dd></div><div><dt>Costs</dt><dd>{t.costs}</dd></div><div><dt>Fits when</dt><dd>{t.fits}</dd></div></dl> : null;
+}
 export function ScenarioView({ id }: { id: string }) {
-  const { update } = useApp();
+  const { st, update } = useApp();
+  const [attemptAt] = useState(() => Date.now());
   const s = SCENARIOS.find(x => x.id === id);
   const statements = useMemo(() => s ? [...s.facts.map(t => ({ t, fact: true })), ...s.interpretations.map(t => ({ t, fact: false }))].sort((a, b) => a.t.localeCompare(b.t)) : [], [s]);
   const [step, setStep] = useState(0);
@@ -170,9 +229,11 @@ export function ScenarioView({ id }: { id: string }) {
   if (!s) return <p>Scenario not found.</p>;
   const factsOk = statements.every((x, i) => !!marks[i] === x.fact);
   const Q = ['Likely to backfire', 'Partly effective', 'Skilful'];
+  const triedIds = new Set(st.scenarios.map(a => a.scenarioId));
+  const similar = SCENARIOS.filter(x => x.id !== s.id && (x.category === s.category || x.skill === s.skill)).sort((a, b) => Number(triedIds.has(a.id)) - Number(triedIds.has(b.id))).slice(0, 2);
   return (<article>
     <p className="muted">{CATEGORY_LABELS[s.category]} · {s.context} · {DIFF[s.difficulty]} · skill: {s.skill}</p>
-    <h1>{s.title}</h1><div className="card"><p className="lead">{s.situation}</p></div>
+    <h1>{s.title}</h1>{s.safety && <div className="card safety" role="note"><h2 className="h3">Safety first</h2><p>{SAFETY_NOTE}</p></div>}<div className="card"><p className="lead">{s.situation}</p></div>
     {step === 0 && <fieldset className="card"><legend><h2>1. Which are camera facts?</h2></legend>
       {statements.map((x, i) => <label key={i} className="check"><input type="checkbox" checked={!!marks[i]} onChange={e => setMarks(m => ({ ...m, [i]: e.target.checked }))} /> {x.t}</label>)}
       <button className="primary" onClick={() => setStep(1)}>Check</button></fieldset>}
@@ -185,23 +246,25 @@ export function ScenarioView({ id }: { id: string }) {
     {step === 4 && <section className="card"><h2>3. Choose a response</h2><div className="opts">
       {s.responses.map((r, i) => <button key={i} className="opt" onClick={() => {
         setResp(i); setStep(5);
-        update(x => ({ ...x, scenarios: [...x.scenarios, { scenarioId: s.id, at: Date.now(), emotions: emo, response: i, quality: r.quality, factsOk }] }));
+        update(x => ({ ...x, scenarios: [...x.scenarios, { scenarioId: s.id, at: attemptAt, emotions: emo, response: i, quality: r.quality, factsOk }] }));
       }}>{r.text}</button>)}</div></section>}
     {step >= 5 && resp !== null && <section className="card" role="status"><h2>Feedback and trade-offs</h2>
       {s.responses.map((r, i) => <div key={i} className={'fb q' + r.quality + (i === resp ? ' chosen' : '')}>
-        <p><strong>{i === resp ? 'Your choice: ' : ''}{Q[r.quality]}</strong> · {r.text}</p><p className="small">{r.feedback}</p></div>)}
+        <p><strong>{i === resp ? 'Your choice: ' : ''}{Q[r.quality]}</strong> · {r.text}</p><p className="small">{r.feedback}</p><TradeOffLines t={r.tradeoff} /></div>)}
       <p className="small muted">Ratings reflect this programme's teaching, not a validated scoring key. Context can change what works.</p>
       {step === 5 && <button className="primary" onClick={() => setStep(s.followUp ? 6 : 7)}>{s.followUp ? 'What happens next' : 'Next: reflect'}</button>}</section>}
     {step >= 6 && s.followUp && <section className="card"><h2>4. What happens next</h2><p className="lead">{s.followUp.next[resp!]}</p><h3>{s.followUp.prompt}</h3>
-      <div className="opts">{s.followUp.options.map((o, i) => <div key={i}><button className={'opt' + (resp2 === i ? ' chosen' : '')} disabled={resp2 !== null} onClick={() => setResp2(i)}>{o.text}</button>
-        {resp2 !== null && <div className={'fb q' + o.quality}><p className="small"><strong>{resp2 === i ? 'Your choice: ' : ''}{Q[o.quality]}.</strong> {o.feedback}</p></div>}</div>)}</div>
+      <div className="opts">{s.followUp.options.map((o, i) => <div key={i}><button className={'opt' + (resp2 === i ? ' chosen' : '')} disabled={resp2 !== null} onClick={() => { setResp2(i); update(x => ({ ...x, scenarios: x.scenarios.map(a => a.scenarioId === s.id && a.at === attemptAt ? { ...a, followUp: i, followUpQuality: o.quality } : a) })); }}>{o.text}</button>
+        {resp2 !== null && <div className={'fb q' + o.quality}><p className="small"><strong>{resp2 === i ? 'Your choice: ' : ''}{Q[o.quality]}.</strong> {o.feedback}</p><TradeOffLines t={o.tradeoff} /></div>}</div>)}</div>
+      {resp2 !== null && <p className="small muted">Other people's responses are not under your control; the same choice can turn out differently on another day.</p>}
       {resp2 !== null && step === 6 && <button className="primary" onClick={() => setStep(7)}>Next: reflect</button>}</section>}
     {step >= 7 && <section className="card"><h2>Reflect and transfer</h2><label htmlFor="tr">{TRANSFER[s.category]}</label>
       <textarea id="tr" rows={3} value={transfer} onChange={e => setTransfer(e.target.value)} />
       <div className="row-btns"><button className="primary" onClick={() => {
-        if (transfer.trim()) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `Gym, ${s.title}: ${transfer.trim()}` }, ...x.journal] }));
+        if (transfer.trim() && st.settings.journalPrompts !== false) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `Gym, ${s.title}: ${transfer.trim()}` }, ...x.journal] }));
         go('#/gym');
-      }}>{transfer.trim() ? 'Save to journal and finish' : 'Finish'}</button></div></section>}
+      }}>{transfer.trim() && st.settings.journalPrompts !== false ? 'Save to journal and finish' : 'Finish'}</button></div>
+      {similar.length > 0 && <><h3>Try a similar scenario</h3><ul className="list">{similar.map(x => <li key={x.id}><a href={`#/gym/${x.id}`}>{x.title}</a></li>)}</ul></>}</section>}
   </article>);
 }
 
@@ -262,19 +325,26 @@ export function Progress() {
   const avg = (a?: Assessment) => a ? (a.selfRatings.reduce((x, y) => x + y, 0) / a.selfRatings.length + 1).toFixed(1) : 'Not taken';
   const fu = followupDue(st);
   return (<><h1>Progress</h1>
-    <section className="card"><h2>Separate measures</h2>
+    <p className="small muted">Demonstrated performance (what you showed in checks and scenarios) is kept apart from self-report (how you rated yourself). Neither is compared with other people, and there are no norms.</p>
+    <section className="card"><h2>Demonstrated performance</h2>
       <dl className="metrics"><div><dt>Completion</dt><dd>{pct(m.completion)}</dd><dd className="small muted">Sessions finished. Does not mean mastered.</dd></div>
         <div><dt>Phase mastery</dt><dd>{m.masteredPhases} of 9 phases</dd><dd className="small muted">Checkpoint score of {MASTERY_THRESHOLD * 100}% or more (design choice).</dd></div>
         <div><dt>Skill mastery</dt><dd>{m.masteredSkills} of {SKILL_SESSIONS.length} skills</dd><dd className="small muted">Latest checkpoint and review answers per skill.</dd></div>
         <div><dt>Retention</dt><dd>{pct(m.retention)}</dd><dd className="small muted">Correct on delayed reviews ({m.reviewsDone} answered).</dd></div>
         <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl></section>
+    <section className="card"><h2>Scenario practice by situation type</h2><table><thead><tr><th>Situation</th><th>Attempts</th><th>Average rating</th></tr></thead><tbody>
+      {(Object.keys(CATEGORY_LABELS) as ScenarioCategory[]).map(c => { const a = st.scenarios.filter(x => SCENARIOS.find(y => y.id === x.scenarioId)?.category === c);
+        return <tr key={c}><td>{CATEGORY_LABELS[c]}</td><td>{a.length}</td><td>{a.length ? pct(a.reduce((t, x) => t + x.quality, 0) / (2 * a.length)) : '-'}</td></tr>; })}</tbody></table>
+      <p className="small muted">Ratings follow this programme's teaching, not a validated key.</p></section>
+    <section className="card"><h2>Review history</h2>{(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
+      return h.length ? <ul className="small">{h.map((r, i) => <li key={i}>{fmt(r.at)}: {SESSIONS.find(x => x.id === ITEM_SKILL[r.id])?.title ?? r.id}, {r.correct ? 'recalled' : 'missed, back to first interval'}</li>)}</ul> : <p className="small">No reviews answered yet.</p>; })()}</section>
     <section className="card"><h2>Phase mastery</h2><table><thead><tr><th>Phase</th><th>Best score</th><th>Status</th></tr></thead><tbody>
       {PHASES.map(p => { const r = st.phaseResults[p.id] ?? []; const best = r.length ? Math.max(...r.map(x => x.score)) : null;
         return <tr key={p.id}><td>{p.id}. {p.title}</td><td>{pct(best)}</td><td>{phaseMastered(st, p.id) ? 'Mastered' : r.length ? 'Retake' : 'Not yet'}</td></tr>; })}</tbody></table></section>
     <section className="card"><h2>Skills</h2><p className="small muted">A skill is mastered when your latest answers on at least 2 of its items in checkpoints or reviews are {MASTERY_THRESHOLD * 100}% correct. "Needs practice" links back to the lesson.</p>
       <details><summary>Show all {SKILL_SESSIONS.length} skills</summary><ul className="list">{SKILL_SESSIONS.map(s => { const k = skillStatus(st, s.id);
         return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}</li>; })}</ul></details></section>
-    <section className="card"><h2>Baseline, post and follow-ups</h2>
+    <section className="card"><h2>Self-report and check results: baseline, post and follow-ups</h2>
       <p className="small muted">Original, non-validated items written for this app. Each result is kept separately and never merged. Use them for personal reflection only; changes may reflect many factors.</p>
       <table><thead><tr><th></th><th>Self-rating (1 to 5)</th><th>Confidence</th><th>Knowledge</th><th>Situations</th></tr></thead><tbody>
         {(['baseline', 'post', 'followup2', 'followup6'] as const).map(k => { const a = A(k); return <tr key={k}><td>{KIND_LABEL[k]}</td><td>{avg(a)}</td><td>{a?.confidence !== undefined ? `${a.confidence}/10` : '-'}</td><td>{a?.knowledgeTotal ? `${a.knowledgeCorrect}/${a.knowledgeTotal}` : '-'}</td><td>{a ? `${a.sjtCorrect}/${a.sjtTotal}` : '-'}</td></tr>; })}</tbody></table>
@@ -323,32 +393,55 @@ export function Library({ id }: { id?: string }) {
   useEffect(() => { if (id) document.getElementById(id)?.scrollIntoView(); }, [id]);
   const usedBy = (cid: string) => [...SESSIONS.filter(s => s.claimIds.includes(cid)).map(s => s.title), ...SCENARIOS.filter(s => s.claimIds.includes(cid)).map(s => s.title)];
   return (<><h1>Research library</h1>
-    <div className="card"><p>Each source below was checked against Crossref metadata (DOI, authors, year, title). The claim text is this app's plain-language summary at abstract level; it was not checked against full texts and gives no effect sizes. Most findings are from adults in research settings and may not transfer exactly to you.</p></div>
-    {SOURCES.map(s => <section key={s.id} id={s.id} className="card"><h2 className="h3">{s.title}</h2>
-      <p className="small">{s.authors} ({s.year}). <em>{s.venue}</em>. <a href={`https://doi.org/${s.doi}`} rel="noopener noreferrer">doi:{s.doi}</a> <span className="badge">DOI verified</span></p>
-      {s.claims.map(c => <div key={c.id}><p>{c.text}</p><p className="small muted">Used in: {usedBy(c.id).slice(0, 6).join('; ') || 'not yet used'}</p></div>)}</section>)}
+    <div className="card"><p>Each source below was checked against Crossref metadata (DOI, authors, year, title). The claim text is this app's plain-language summary at abstract level; it was not checked against full texts. Most findings are from adults in research settings and may not transfer exactly to you.</p>
+      <p className="small">Four kinds of statement are not the same: a technique may be useful; digital delivery can support an outcome; a specific intervention was evaluated; this app improves outcomes. Only the first three appear in this library, and this app itself has not been evaluated.</p>
+      <p className="small muted">Labels: <strong>Direct support</strong> = the app states what the source found; <strong>Cautious extrapolation</strong> = the app applies a finding to a different setting; <strong>Background theory</strong> = frames the curriculum.</p></div>
+    {SOURCES.map(s => { const e = EVIDENCE[s.id]; return <section key={s.id} id={s.id} className="card"><h2 className="h3">{s.title}</h2>
+      <p className="small">{s.authors} ({s.year}). <em>{s.venue}</em>. <a href={`https://doi.org/${s.doi}`} rel="noopener noreferrer">doi:{s.doi}</a> <span className="badge">DOI verified</span>{e && <> <span className="badge">{USE_LABEL[e.use]}</span></>}</p>
+      {e && <dl className="small tradeoff"><div><dt>Type</dt><dd>{e.type}; {e.design}</dd></div><div><dt>Population</dt><dd>{e.population}</dd></div><div><dt>Limitations</dt><dd>{e.limitations}</dd></div></dl>}
+      {s.claims.map(c => <div key={c.id}><p>{c.text}</p><p className="small muted">Used in: {usedBy(c.id).slice(0, 6).join('; ') || 'not yet used'}</p></div>)}</section>; })}
+    <section className="card"><h2 className="h3">Not cited (could not be verified here)</h2><ul className="small"><li>Beck, J. S., Cognitive Behavior Therapy: Basics and Beyond. The edition could not be verified against a bibliographic record, so it is not cited.</li><li>World Health Organization, Doing What Matters in Times of Stress. Not verified against a bibliographic record here; it was written for people under severe stress, including humanitarian settings, so it is not cited.</li><li>ERQ and DERS-16 questionnaires: licensing for use in an app was not verified, so they are not included.</li></ul></section>
   </>);
 }
 
 export function Settings() {
   const { st, update, storage, persistent } = useApp();
   const [msg, setMsg] = useState('');
+  const [pending, setPending] = useState<AppState | null>(null);
+  const [backupAt, setBackupAt] = useState<number | null>(null);
+  useEffect(() => { readPreImportBackup(storage).then(b => setBackupAt(b?.at ?? null)).catch(() => undefined); }, [storage, msg]);
   const download = () => { const b = new Blob([exportData(st)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `emotional-skills-lab-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setMsg('Export downloaded.'); };
+  const cur = summarise(st);
+  const apply = async (mode: 'replace' | 'merge') => {
+    if (!pending) return;
+    try { await backupBeforeImport(storage, st); } catch { setMsg('Import stopped: could not save a backup of your current data first. Nothing was changed.'); return; }
+    update(x => mode === 'replace' ? pending : mergeStates(x, pending));
+    setPending(null); setMsg(mode === 'replace' ? 'Import complete. Your previous data was backed up on this device and can be restored below.' : 'Merge complete. Your previous data was backed up on this device and can be restored below.');
+  };
   return (<><h1>Settings and privacy</h1>
     {!persistent && <p className="card warn">Storage is unavailable in this browser mode. Your progress will be lost when you close the app.</p>}
     <section className="card"><h2>Theme</h2><div className="chips">{(['auto', 'light', 'dark'] as const).map(t => <button key={t} className="chip" aria-pressed={st.settings.theme === t} onClick={() => update(x => ({ ...x, settings: { ...x.settings, theme: t } }))}>{t === 'auto' ? 'Match phone' : t[0].toUpperCase() + t.slice(1)}</button>)}</div></section>
-    <section className="card"><h2>Follow-up checks</h2><p>After the post-programme check, short follow-ups are offered at about 2 and 6 weeks. There are no notifications; they appear on Today.</p>
-      <label className="check"><input type="checkbox" checked={st.settings.followups?.enabled ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, followups: { enabled: e.target.checked } } }))} /> Offer follow-up checks</label></section>
-    <section className="card"><h2>Your data</h2><p>Everything is stored in this browser on this device (IndexedDB). Nothing is sent anywhere: there are no accounts, analytics or servers. Clearing browser data, uninstalling, or private mode can erase it, so export a backup now and then.</p>
+    <section className="card"><h2>Reviews, follow-ups and journal</h2><p>There are no notifications or reminders. Due reviews and follow-ups appear on Today. Review intervals are {REVIEW_INTERVALS_DAYS.join(', ')} days (an instructional design choice).</p>
+      <label className="check"><input type="checkbox" checked={st.settings.followups?.enabled ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, followups: { enabled: e.target.checked } } }))} /> Offer follow-up checks about 2 and 6 weeks after the programme</label>
+      <label className="check"><input type="checkbox" checked={st.settings.journalPrompts ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, journalPrompts: e.target.checked } }))} /> Offer to save reflections to the journal after sessions and scenarios</label></section>
+    <section className="card"><h2>Your data</h2><p>Everything is stored in this browser on this device (IndexedDB). It is not encrypted. Nothing is sent anywhere: there are no accounts, analytics or servers. Clearing browser data, uninstalling, or private mode can erase it, and anyone who can use this device and browser can open it. Export a backup now and then.</p>
       <div className="row-btns"><button onClick={download}>Export backup</button>
         <label className="btn">Import backup<input className="sr-only" type="file" accept="application/json" onChange={async e => {
-          const f = e.target.files?.[0]; if (!f) return;
-          try { const s = importData(await f.text()); if (confirm('Replace all current data with this backup?')) { update(() => s); setMsg('Import complete.'); } } catch (err) { setMsg(`Import failed: ${(err as Error).message}`); }
-        }} /></label>
-        <button className="danger" onClick={() => { if (confirm('Reset progress? Journal and assessments are kept.')) update(x => ({ ...emptyState(), journal: x.journal, assessments: x.assessments, settings: x.settings })); setMsg('Progress reset.'); }}>Reset progress</button>
-        <button className="danger" onClick={async () => { if (confirm('Delete ALL data permanently from this device?')) { await deleteAll(storage); update(() => emptyState()); setMsg('All data deleted.'); } }}>Delete all data</button></div>
+          const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+          try { setPending(importData(await f.text())); setMsg(''); } catch (err) { setMsg(`Import failed: ${err instanceof DataError ? err.message : 'the file could not be read.'} Nothing was changed.`); }
+        }} /></label></div>
+      {pending && <div className="card accent" role="region" aria-label="Confirm import"><h3>Import this backup?</h3>
+        <p className="small">Backup contains {summarise(pending).sessions} completed sessions, {summarise(pending).journal} journal entries, {summarise(pending).scenarios} scenario attempts and {summarise(pending).assessments} checks. This device has {cur.sessions}, {cur.journal}, {cur.scenarios} and {cur.assessments}.</p>
+        <p className="small">Either way, your current data is saved as a backup on this device first.</p>
+        <div className="row-btns"><button className="primary" onClick={() => apply('merge')}>Merge with current data</button><button onClick={() => apply('replace')}>Replace current data</button><button onClick={() => { setPending(null); setMsg('Import cancelled. Nothing was changed.'); }}>Cancel</button></div></div>}
+      {backupAt && <p className="small">Backup from before the last import: {fmt(backupAt)}. <button className="link" onClick={async () => { const b = await readPreImportBackup(storage); if (b && confirm('Restore the data from before the last import? Current data will be replaced.')) { update(() => b.state); setMsg('Restored data from before the last import.'); } }}>Restore it</button></p>}
+      <div className="row-btns">
+        <button className="danger" onClick={() => { if (confirm('Reset progress? Sessions, scores, reviews and scenario history are cleared. Journal, checks and settings are kept.')) { update(x => ({ ...emptyState(), journal: x.journal, assessments: x.assessments, settings: x.settings })); setMsg('Progress reset.'); } }}>Reset progress</button>
+        <button className="danger" onClick={async () => { if (confirm('Delete ALL data permanently from this device? This includes your journal and any import backup. Export first if you want a copy.')) { await deleteAll(storage); update(() => emptyState()); setMsg('All data deleted.'); } }}>Delete all data</button></div>
       <p role="status">{msg}</p></section>
     <section className="card"><h2>How progress works</h2><ul><li>Completion: sessions finished.</li><li>Mastery: a phase checkpoint scored at {MASTERY_THRESHOLD * 100}% or more. This threshold is a design choice, not a research standard.</li><li>Retention: correct answers on items reviewed {REVIEW_INTERVALS_DAYS.join(', ')} days after mastery. A wrong answer sends the item back to the first interval.</li></ul></section>
+    <section className="card"><h2>About</h2><p className="small">Emotional Skills Lab version {APP_VERSION}, data schema {st.schema}. Self-guided education, not a medical device. It has not been evaluated in a study, so it makes no claim to improve outcomes. <a href="#/welcome">Reopen the introduction</a> · <a href="#/library">Evidence and its limits</a> · <a href="#/help">Safety</a></p>
+      <p className="small muted">Updates: when a new version is published, it downloads in the background and is used the next time you open the app. Your data stays in place and is upgraded automatically if its format changes.</p></section>
   </>);
 }
 

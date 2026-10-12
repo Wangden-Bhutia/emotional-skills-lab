@@ -15,7 +15,7 @@ const mk = (week: number, day: number, kind: Session['kind'], title: string, obj
   });
 };
 
-export const SESSIONS: Session[] = [
+const RAW: Session[] = [
 // WEEK 1 Foundations
 mk(1,1,'lesson','What emotions are for','Describe emotions as signals that prepare action, not as commands.',
  ['An emotion is a whole-body response to something that matters to you. It usually includes a situation, an interpretation of that situation, bodily changes, an urge to act, and a feeling you can name.',
@@ -479,3 +479,6 @@ mk(12,5,'checkpoint','Final checkpoint','Demonstrate integration.',
   ['Skills are retained best with...',['One cram session','Spaced retrieval','Never reviewing','Reading once'],1,'Spacing and retrieval.']],
  'What will you carry forward?',['cepeda2006-c1','bonanno2013-c1']),
 ];
+/** Claims added in the compliance pass (spec 4.1): digital-delivery evidence and the 2015 process-model update. */
+const ADD_CLAIMS: Record<string, string[]> = { w01d1: ['eisenstadt2021-c1', 'macrynikola2024-c1'], w01d3: ['gross2015-c1'] };
+export const SESSIONS: Session[] = RAW.map(s => ADD_CLAIMS[s.id] ? { ...s, claimIds: [...s.claimIds, ...ADD_CLAIMS[s.id]] } : s);

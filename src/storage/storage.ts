@@ -14,12 +14,15 @@ export class MemoryStorage implements KVStorage {
   async clear() { this.m.clear(); }
   async keys() { return [...this.m.keys()]; }
 }
+export const DB_VERSION = 1;
 export class IDBStorage implements KVStorage {
   private dbp: Promise<IDBDatabase>;
   constructor(name = 'emotional-skills-lab', private store = 'kv') {
     this.dbp = new Promise((res, rej) => {
-      const r = indexedDB.open(name, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore(store);
+      const r = indexedDB.open(name, DB_VERSION);
+      // Explicit IndexedDB schema versions. Version 1: one key-value store. App data schema is versioned separately (engine/data.ts).
+      r.onupgradeneeded = e => { if (e.oldVersion < 1) r.result.createObjectStore(store); };
+      r.onblocked = () => rej(new Error('Storage is blocked by another open tab of this app.'));
       r.onsuccess = () => res(r.result);
       r.onerror = () => rej(r.error);
     });

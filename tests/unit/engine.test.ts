@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { SESSIONS } from '../../src/content/sessions';
-import { checkpointItems, lessonItems, retakeLesson, remediationFor, skillStatus, ITEM_SKILL, postponeFollowup, answerReview, completeSession, dueReviews, emptyState, exportData, followupDue, importData, isUnlocked, metrics, nextSession, phaseMastered, MASTERY_THRESHOLD } from '../../src/engine/state';
+import { checkpointItems, lessonItems, retakeLesson, remediationFor, skillStatus, ITEM_SKILL, postponeFollowup, answerReview, completeSession, dueReviews, emptyState, followupDue, isUnlocked, metrics, nextSession, phaseMastered, MASTERY_THRESHOLD } from '../../src/engine/state';
 import { IDBStorage, MemoryStorage } from '../../src/storage/storage';
 import { loadState, saveState, deleteAll } from '../../src/storage/repo';
+import { exportData, importData } from '../../src/engine/data';
 const DAY = 86400000;
 const allRight = (id: string) => Object.fromEntries(SESSIONS.find(s => s.id === id)!.checks.map(c => [c.id, true]));
 const allWrong = (id: string) => Object.fromEntries(SESSIONS.find(s => s.id === id)!.checks.map(c => [c.id, false]));

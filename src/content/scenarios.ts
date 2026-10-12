@@ -1,5 +1,8 @@
 import type { Scenario, ScenarioCategory, ResponseOption } from './types';
 import { DIFFICULTY, BRANCHES } from './scenarioExtra';
+import { BRANCHES2 } from './branches2';
+import { TRADEOFFS } from './tradeoffs';
+import { SAFETY_SCENARIOS } from './safetyScenarios';
 export { TRANSFER } from './scenarioExtra';
 type R = [string, 0 | 1 | 2, string];
 let n = 0;
@@ -186,4 +189,12 @@ sc('misunderstanding','professional','Different deadlines','You thought the dead
  ['Defensiveness','Embarrassment','Calm','Frustration'],[0,1,3],
  [['"Nobody told me Wednesday."',1,'May be true, but leading with blame makes the conversation about fault.'],['"I had Friday in my notes; let\'s check where we diverged and agree what I can deliver today."',2,'Separates facts from blame and moves to a fix; costs a little pride.'],['Apologise for everything and work all night without discussing it.',1,'Fixes the immediate problem but leaves the misunderstanding in place for next time.']],'Problem solving',['aldao2010-c1']),
 ];
-export const SCENARIOS: Scenario[] = BASE.map(s => ({ ...s, difficulty: DIFFICULTY[s.id] ?? 2, followUp: BRANCHES[s.id] }));
+const withTO = (opts: ResponseOption[], t?: [string, string, string][]) => opts.map((r, i) => r.tradeoff || !t?.[i] ? r : { ...r, tradeoff: { protects: t[i][0], costs: t[i][1], fits: t[i][2] } });
+/** sc36 is a harassment situation: safety-first framing (spec 12). */
+const SAFETY_IDS = new Set(['sc36']);
+export const SCENARIOS: Scenario[] = [...BASE.map(s => {
+  const f = BRANCHES[s.id] ?? BRANCHES2[s.id]; const t = TRADEOFFS[s.id];
+  const responses = s.id === 'sc36' ? s.responses.map((r, i) => i === 0 ? { ...r, feedback: 'A common, understandable way to get through an uncomfortable moment, but it leaves the remark unaddressed. You are not responsible for the client\'s behaviour; reporting it afterwards is reasonable.' } : r) : s.responses;
+  return { ...s, safety: SAFETY_IDS.has(s.id) || undefined, difficulty: DIFFICULTY[s.id] ?? 2, responses: withTO(responses, t?.r),
+    followUp: f && { ...f, options: withTO(f.options, t?.f) } };
+}), ...SAFETY_SCENARIOS];

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StoreProvider, useApp } from './ui/store';
-import { AssessView, Gym, Help, Home, Journal, Library, Programme, Progress, Review, ScenarioView, SessionView, Settings } from './ui/views';
+import { AssessCentre, Welcome, AssessView, Gym, Help, Home, Journal, Library, Programme, Progress, Review, ScenarioView, SessionView, Settings } from './ui/views';
 
 const NAV = [['#/', 'Today'], ['#/programme', 'Learn'], ['#/gym', 'Gym'], ['#/journal', 'Journal'], ['#/progress', 'Progress']] as const;
 function useHash() { const [h, setH] = useState(location.hash || '#/'); useEffect(() => { const f = () => { setH(location.hash || '#/'); window.scrollTo(0, 0); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []); return h; }
@@ -25,7 +25,8 @@ function Shell() {
     case 'review': view = <Review />; break;
     case 'journal': view = <Journal />; break;
     case 'progress': view = <Progress />; break;
-    case 'assess': view = ['baseline', 'post', 'followup2', 'followup6'].includes(arg) ? <AssessView key={arg} kind={arg as 'baseline'} /> : <p>Unknown check.</p>; break;
+    case 'welcome': view = <Welcome />; break;
+    case 'assess': view = !arg ? <AssessCentre /> : ['baseline', 'post', 'followup2', 'followup6'].includes(arg) ? <AssessView key={arg} kind={arg as 'baseline'} /> : <p>Unknown check.</p>; break;
     case 'library': view = <Library id={arg} />; break;
     case 'settings': view = <Settings />; break;
     case 'help': view = <Help />; break;

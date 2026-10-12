@@ -23,13 +23,16 @@ export interface Session {
   estimate: { reading: number; practice: number; activity: number; explain: number; checks: number; apply: number };
 }
 export type ScenarioCategory = 'anger' | 'criticism' | 'anxiety' | 'frustration' | 'misunderstanding' | 'professional';
-export interface ResponseOption { text: string; quality: 0 | 1 | 2; feedback: string }
+export interface TradeOff { protects: string; costs: string; fits: string }
+export interface ResponseOption { text: string; quality: 0 | 1 | 2; feedback: string; tradeoff?: TradeOff }
 export interface Scenario {
   id: string; category: ScenarioCategory; context: 'everyday' | 'professional'; title: string;
   situation: string; facts: string[]; interpretations: string[];
   emotionOptions: string[]; plausibleEmotions: number[];
   responses: ResponseOption[]; skill: string; claimIds: string[];
   difficulty: 1 | 2 | 3;
+  /** Threat, coercion or harassment: safety-first feedback and notice (spec 12). */
+  safety?: boolean;
   /** Optional branching follow-up: what happens next depends on the first choice; then a second decision. */
   followUp?: { next: string[]; prompt: string; options: ResponseOption[] };
 }
