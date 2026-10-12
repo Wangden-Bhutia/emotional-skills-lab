@@ -5,7 +5,8 @@ import { SESSIONS } from '../content/sessions';
 import { PHASES } from '../content/phases';
 import { SCENARIOS, CATEGORY_LABELS } from '../content/scenarios';
 import { SOURCES } from '../content/sources';
-import { SELF_RATING_ITEMS, SELF_RATING_SCALE, SJT_ITEMS, KNOWLEDGE_ITEMS, GOALS } from '../content/measures';
+import { SELF_RATING_ITEMS, SELF_RATING_SCALE, SJT_ITEMS, KNOWLEDGE_ITEMS, GOALS, POST_KNOWLEDGE_ITEMS, POST_SJT_ITEMS } from '../content/measures';
+import { COMPETENCIES, EVIDENCE_RULE } from '../content/competencies';
 import type { ScenarioCategory, CheckItem } from '../content/types';
 import { TRANSFER } from '../content/scenarios';
 import { CHECKPOINT_DRAW } from '../content/enrich';
@@ -13,7 +14,7 @@ import { Activity } from './Activity';
 import { ExplainBack } from './ExplainBack';
 import {
   checkpointItems, lessonItems, retakeLesson, remediationFor, skillStatus, SKILL_SESSIONS, ITEM_SKILL, postponeFollowup, FOLLOWUP_DAYS,
-  ALL_ITEMS, MASTERY_THRESHOLD, REVIEW_INTERVALS_DAYS, answerReview, completeSession, dueReviews, emotionFrequency,
+  ALL_ITEMS, MASTERY_THRESHOLD, retentionItems, REVIEW_INTERVALS_DAYS, answerReview, completeSession, dueReviews, emotionFrequency,
   followupDue, isUnlocked, metrics, nextSession, phaseMastered, emptyState,
   type Assessment, type JournalEntry,
 } from '../engine/state';
@@ -67,6 +68,14 @@ export function Home() {
   </>);
 }
 
+export function OfflineNote() {
+  const [ctl, setCtl] = useState(() => typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller);
+  useEffect(() => { const sw = navigator.serviceWorker; if (!sw) return; const f = () => setCtl(!!sw.controller); sw.addEventListener('controllerchange', f); return () => sw.removeEventListener('controllerchange', f); }, []);
+  return <p className="small" role="status" data-offline-ready={ctl ? 'yes' : 'no'}>{ctl
+    ? 'Offline ready: this app is saved on this device and works without a connection, including export and import.'
+    : 'First visit: the app is still downloading for offline use. Keep a connection until this message changes; after that it works offline.'}</p>;
+}
+
 export function Welcome() {
   const { update } = useApp();
   return (<><h1>Welcome to Emotional Skills Lab</h1>
@@ -74,6 +83,7 @@ export function Welcome() {
     <section className="card"><h2>What it can and cannot do</h2><ul><li>It can teach and let you practise skills drawn from published research on emotion regulation and learning.</li><li>It cannot diagnose, treat or replace professional care, and it has not been tested as an intervention. No app, including this one, works the same for everyone.</li><li>It never reads or grades your writing. Scores come only from multiple-choice and scenario answers, using fixed rules you can see.</li></ul></section>
     <section className="card"><h2>The pathway</h2><p>12 weeks, 9 phases, {SESSIONS.length} sessions of about 15 to 30 minutes (estimated, not measured), five a week. Going slower is fine; nothing expires and nothing is penalised.</p></section>
     <section className="card"><h2>Training, assessment and care are different</h2><p>Lessons and the gym are training. Checkpoints, reviews and the baseline are assessment of what you can show in this app. Neither is clinical care. If you are struggling, a qualified professional is the right support.</p></section>
+    <section className="card"><h2>Offline use</h2><OfflineNote /></section>
     <section className="card"><h2>Your data</h2><p>Everything stays in this browser on this device. It is not encrypted and nothing is sent anywhere. Clearing browser data or private browsing can erase it, and anyone using this device could open it. Export a backup from Settings now and then.</p></section>
     <div className="row-btns"><button className="primary" onClick={() => { update(x => ({ ...x, settings: { ...x.settings, welcomed: true } })); go('#/assess/baseline'); }}>Set goals and take the baseline</button>
       <button onClick={() => { update(x => ({ ...x, settings: { ...x.settings, welcomed: true } })); go('#/'); }}>Go to Today</button></div>
@@ -148,7 +158,8 @@ export function SessionView({ id }: { id: string }) {
     {prev && <p className="badge">Completed {fmt(prev.at)}</p>}
     {resumed && stage === 'explain' && <p className="card small" role="status">Resumed where you left off. <button className="link" onClick={() => setStage('learn')}>Back to the lesson</button></p>}
     {stage === 'learn' && <>
-      <details className="card small"><summary>Before you start: prerequisites and time</summary>
+      <details className="card small"><summary>Before you start: competency, prerequisites and time</summary>
+        {COMPETENCIES[s.id] && <p><strong>Competency:</strong> {COMPETENCIES[s.id]} <span className="muted">{EVIDENCE_RULE}</span></p>}
         <p>{prereq.length ? <>Builds on: {prereq.map(p => <a key={p.id} href={`#/session/${p.id}`}>{p.title} </a>)}</> : 'No prerequisites.'}</p>
         <p className="muted">Time estimate: reading {Math.round(est.reading)}, practice {Math.round(est.practice)}, activity {Math.round(est.activity)}, explain-back {est.explain}, questions {Math.round(est.checks)}, application plan {est.apply} minutes. Estimated, not measured.</p></details>
       <section className="card">{s.teach.map((p, i) => <p key={i}>{p}</p>)}
@@ -293,8 +304,8 @@ export function Journal() {
   };
   const edit = (e: JournalEntry) => {
     setEditId(e.id); setMode(e.type); setSel(Object.fromEntries(e.emotions.map(x => [x.name, x.intensity])));
-    const { trigger, facts, interpretation, urge, strategy, outcome, lesson, note } = e;
-    setF(Object.fromEntries(Object.entries({ trigger, facts, interpretation, urge, strategy, outcome, lesson, note }).filter(([, v]) => v !== undefined)) as Record<string, string>);
+    const { trigger, facts, interpretation, urge, strategy, outcome, next, lesson, note } = e;
+    setF(Object.fromEntries(Object.entries({ trigger, facts, interpretation, urge, strategy, outcome, next, lesson, note }).filter(([, v]) => v !== undefined)) as Record<string, string>);
     window.scrollTo(0, 0);
   };
   const fld = (k: keyof JournalEntry, label: string) => <label key={k} className="field">{label}<textarea rows={2} value={f[k] ?? ''} onChange={e => setF(x => ({ ...x, [k]: e.target.value }))} /></label>;
@@ -305,12 +316,12 @@ export function Journal() {
         {EMOTIONS.map(e => <button key={e} aria-pressed={e in sel} className="chip" onClick={() => setSel(x => { const n = { ...x }; if (e in n) delete n[e]; else if (Object.keys(n).length < 3) n[e] = 5; return n; })}>{e}</button>)}</div>
         {Object.entries(sel).map(([e, v]) => <label key={e} className="field">{e} intensity: {v}<input type="range" min={0} max={10} value={v} onChange={ev => setSel(x => ({ ...x, [e]: +ev.target.value }))} /></label>)}</fieldset>}
       {mode === 'checkin' && fld('note', 'One line (optional)')}
-      {mode === 'reflection' && [fld('trigger', 'Situation or trigger'), fld('facts', 'Camera facts'), fld('interpretation', 'My interpretation'), fld('urge', 'Urge'), fld('strategy', 'Strategy I used'), fld('outcome', 'Outcome'), fld('lesson', 'Lesson or next time'), ...(f.note !== undefined ? [fld('note', 'Note')] : [])]}
+      {mode === 'reflection' && <><p className="small muted">Every field is optional. Fill in only what helps.</p>{[fld('trigger', 'What happened'), fld('facts', 'What I noticed'), fld('interpretation', 'My interpretation'), fld('urge', 'Emotion or impulse'), fld('strategy', 'What I did'), fld('next', 'What happened next?'), ...(f.outcome !== undefined ? [fld('outcome', 'Outcome')] : []), fld('lesson', 'What I will try next time'), ...(f.note !== undefined ? [fld('note', 'Note')] : [])]}</>}
       {mode === 'plan' && [fld('trigger', 'If (situation or cue)'), fld('strategy', 'Then I will')]}
       <div className="row-btns"><button className="primary" onClick={save}>{editId ? 'Save changes' : 'Save'}</button><button onClick={reset}>Cancel</button></div></section>}
     <ul className="list">{st.journal.map(e => <li key={e.id} className="card entry"><p className="muted small">{fmt(e.at)} · {e.type}{e.editedAt ? ` · edited ${fmt(e.editedAt)}` : ''}</p>
       {e.emotions.length > 0 && <p>{e.emotions.map(x => `${x.name} ${x.intensity}`).join(', ')}</p>}
-      {e.type === 'plan' ? <p>If {e.trigger}, then {e.strategy}.</p> : [e.trigger, e.facts, e.interpretation, e.urge, e.strategy, e.outcome, e.lesson, e.note].filter(Boolean).map((t, i) => <p key={i}>{t}</p>)}
+      {e.type === 'plan' ? <p>If {e.trigger}, then {e.strategy}.</p> : [e.trigger, e.facts, e.interpretation, e.urge, e.strategy, e.next, e.outcome, e.lesson, e.note].filter(Boolean).map((t, i) => <p key={i}>{t}</p>)}
       <div className="row-btns"><button className="link" onClick={() => edit(e)}>Edit entry</button>
         <button className="link" onClick={() => { if (confirm('Delete this entry?')) update(x => ({ ...x, journal: x.journal.filter(y => y.id !== e.id) })); }}>Delete entry</button></div></li>)}</ul>
   </>);
@@ -343,11 +354,13 @@ export function Progress() {
         return <tr key={p.id}><td>{p.id}. {p.title}</td><td>{pct(best)}</td><td>{phaseMastered(st, p.id) ? 'Mastered' : r.length ? 'Retake' : 'Not yet'}</td></tr>; })}</tbody></table></section>
     <section className="card"><h2>Skills</h2><p className="small muted">A skill is mastered when your latest answers on at least 2 of its items in checkpoints or reviews are {MASTERY_THRESHOLD * 100}% correct. "Needs practice" links back to the lesson.</p>
       <details><summary>Show all {SKILL_SESSIONS.length} skills</summary><ul className="list">{SKILL_SESSIONS.map(s => { const k = skillStatus(st, s.id);
-        return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}</li>; })}</ul></details></section>
+        return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}<p className="small muted competency">{COMPETENCIES[s.id]}</p></li>; })}</ul><p className="small muted">{EVIDENCE_RULE}</p></details></section>
     <section className="card"><h2>Self-report and check results: baseline, post and follow-ups</h2>
       <p className="small muted">Original, non-validated items written for this app. Each result is kept separately and never merged. Use them for personal reflection only; changes may reflect many factors.</p>
-      <table><thead><tr><th></th><th>Self-rating (1 to 5)</th><th>Confidence</th><th>Knowledge</th><th>Situations</th></tr></thead><tbody>
-        {(['baseline', 'post', 'followup2', 'followup6'] as const).map(k => { const a = A(k); return <tr key={k}><td>{KIND_LABEL[k]}</td><td>{avg(a)}</td><td>{a?.confidence !== undefined ? `${a.confidence}/10` : '-'}</td><td>{a?.knowledgeTotal ? `${a.knowledgeCorrect}/${a.knowledgeTotal}` : '-'}</td><td>{a ? `${a.sjtCorrect}/${a.sjtTotal}` : '-'}</td></tr>; })}</tbody></table>
+      <table><thead><tr><th></th><th>Self-rating (1 to 5)</th><th>Confidence</th><th>Knowledge</th><th>Situations</th><th>Retention</th></tr></thead><tbody>
+        {(['baseline', 'post', 'followup2', 'followup6'] as const).map(k => { const a = A(k); return <tr key={k}><td>{KIND_LABEL[k]}</td><td>{avg(a)}</td><td>{a?.confidence !== undefined ? `${a.confidence}/10` : '-'}</td><td>{a?.knowledgeTotal ? `${a.knowledgeCorrect}/${a.knowledgeTotal}` : '-'}</td><td>{a ? `${a.sjtCorrect}/${a.sjtTotal}` : '-'}</td><td>{a?.retentionTotal ? `${a.retentionCorrect}/${a.retentionTotal}` : '-'}</td></tr>; })}</tbody></table>
+      <p className="small muted">Baseline uses one item set; the post check uses a different, unseen set covering the same skills, so the two are comparable in content but not identical.</p>
+      {A('baseline')?.recurring ? <p className="small">Situations you noted at baseline: {A('baseline')!.recurring}</p> : null}
       {A('baseline')?.goals?.length ? <p className="small">Your baseline goals: {A('baseline')!.goals!.join('; ')}{A('baseline')!.goalNote ? `; ${A('baseline')!.goalNote}` : ''}</p> : null}
       <div className="row-btns">{!A('baseline') && <button onClick={() => go('#/assess/baseline')}>Take baseline</button>}
         {nextSession(st) === undefined && !A('post') && <button onClick={() => go('#/assess/post')}>Take post check</button>}
@@ -359,32 +372,43 @@ export function Progress() {
 }
 
 export function AssessView({ kind }: { kind: Assessment['kind'] }) {
-  const { update } = useApp();
+  const { st, update } = useApp();
   const [ratings, setRatings] = useState<number[]>(SELF_RATING_ITEMS.map(() => -1));
   const [goals, setGoals] = useState<string[]>([]);
   const [goalNote, setGoalNote] = useState('');
+  const [recurring, setRecurring] = useState('');
   const [confidence, setConfidence] = useState(5);
   const [know, setKnow] = useState<number | null>(null);
+  const [sjt, setSjt] = useState(0);
   const [explanation, setExplanation] = useState('');
-  const [part, setPart] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const save = (sjt: number) => update(x => ({ ...x, assessments: [...x.assessments, {
-    kind, at: Date.now(), selfRatings: ratings, sjtCorrect: sjt, sjtTotal: SJT_ITEMS.length, confidence, knowledgeCorrect: know ?? 0, knowledgeTotal: KNOWLEDGE_ITEMS.length,
-    ...(kind === 'baseline' ? { goals, goalNote: goalNote.trim() || undefined } : {}), ...(kind !== 'baseline' && explanation.trim() ? { explanation: explanation.trim() } : {}),
-  }] }));
+  const [part, setPart] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const post = kind === 'post';
+  const knowItems = post ? POST_KNOWLEDGE_ITEMS : KNOWLEDGE_ITEMS;
+  const sjtItems = post ? POST_SJT_ITEMS : SJT_ITEMS;
+  const [retItems] = useState(() => kind === 'baseline' ? [] : retentionItems(st));
+  const save = (sjtC: number, ret?: number) => update(x => ({ ...x, assessments: [...x.assessments, {
+    kind, at: Date.now(), selfRatings: ratings, sjtCorrect: sjtC, sjtTotal: sjtItems.length, confidence, knowledgeCorrect: know ?? 0, knowledgeTotal: knowItems.length, itemSet: post ? 'post' : 'baseline',
+    ...(kind === 'baseline' ? { goals, goalNote: goalNote.trim() || undefined, recurring: recurring.trim() || undefined } : {}), ...(kind !== 'baseline' && explanation.trim() ? { explanation: explanation.trim() } : {}),
+    ...(ret !== undefined ? { retentionCorrect: ret, retentionTotal: retItems.length } : {}),
+  } as Assessment] }));
   return (<><h1>{KIND_LABEL[kind]} check</h1>
-    <p className="muted small">Original, non-validated measures. Not a diagnosis. About 8 to 12 minutes. Stored only on this device.</p>
+    <p className="muted small">Original, non-validated measures. Not a diagnosis. About 8 to 15 minutes. Stored only on this device.{post ? ' Uses new questions you have not seen in the baseline, plus a retention section from earlier lessons.' : ''}</p>
     {part === 1 && <section className="card">
       {kind === 'baseline' && <fieldset><legend><h2>Your goals</h2></legend><p className="small muted">Choose any that apply.</p>
         {GOALS.map(g => <label key={g} className="check"><input type="checkbox" checked={goals.includes(g)} onChange={e => setGoals(x => e.target.checked ? [...x, g] : x.filter(y => y !== g))} /> {g}</label>)}
-        <label className="field">Anything else (optional)<textarea rows={2} value={goalNote} onChange={e => setGoalNote(e.target.value)} /></label></fieldset>}
+        <label className="field">Anything else (optional)<textarea rows={2} value={goalNote} onChange={e => setGoalNote(e.target.value)} /></label>
+        <label className="field">Optional: which situations keep coming up for you? For example, a type of conversation, person or time of day.<textarea rows={3} value={recurring} onChange={e => setRecurring(e.target.value)} /></label>
+        <p className="small muted">Kept as your own notes. The app does not analyse it.</p></fieldset>}
       <h2>Self-ratings</h2>{SELF_RATING_ITEMS.map((q, i) => <fieldset key={i} className="rating"><legend>{q}</legend>
       <div className="chips">{SELF_RATING_SCALE.map((l, k) => <label key={k} className="chip"><input type="radio" name={`r${i}`} checked={ratings[i] === k} onChange={() => setRatings(r => r.map((v, j) => (j === i ? k : v)))} /> {l}</label>)}</div></fieldset>)}
       <label className="field">Overall, how confident are you in handling difficult emotions? {confidence}/10<input type="range" min={0} max={10} value={confidence} onChange={e => setConfidence(+e.target.value)} /></label>
       <button className="primary" disabled={ratings.includes(-1)} onClick={() => setPart(2)}>Continue</button></section>}
-    {part === 2 && <Quiz label="Knowledge" items={KNOWLEDGE_ITEMS} onDone={r => { setKnow(Object.values(r).filter(Boolean).length); setPart(kind === 'baseline' ? 4 : 3); }} />}
+    {part === 2 && <Quiz label="Knowledge" items={knowItems} onDone={r => { setKnow(Object.values(r).filter(Boolean).length); setPart(kind === 'baseline' ? 4 : 3); }} />}
     {part === 3 && <section className="card"><h2>Explain in your own words</h2><label htmlFor="ex">How would you now handle a moment of strong anger at work, step by step? (The app does not grade this; it is kept so you can compare later.)</label>
       <textarea id="ex" rows={5} value={explanation} onChange={e => setExplanation(e.target.value)} /><button className="primary" onClick={() => setPart(4)}>Continue</button></section>}
-    {part === 4 && <Quiz label="Situations" items={SJT_ITEMS} onDone={r => { save(Object.values(r).filter(Boolean).length); setPart(5); }} />}
+    {part === 4 && <Quiz label="Situations" items={sjtItems} onDone={r => { const c = Object.values(r).filter(Boolean).length; if (kind === 'baseline' || !retItems.length) { save(c); setPart(5); } else { setSjt(c); setPart(6); } }} />}
+    {part === 6 && <><p className="card small">Retention: {retItems.length} questions from lessons you completed earlier, to see what has stayed with you.</p>
+      <Quiz label="Retention" items={retItems} onDone={r => { save(sjt, Object.values(r).filter(Boolean).length); setPart(5); }} /></>}
     {part === 5 && <div className="card"><h2>Saved</h2><button className="primary" onClick={() => go('#/progress')}>See progress</button></div>}
   </>);
 }
@@ -424,6 +448,7 @@ export function Settings() {
     <section className="card"><h2>Reviews, follow-ups and journal</h2><p>There are no notifications or reminders. Due reviews and follow-ups appear on Today. Review intervals are {REVIEW_INTERVALS_DAYS.join(', ')} days (an instructional design choice).</p>
       <label className="check"><input type="checkbox" checked={st.settings.followups?.enabled ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, followups: { enabled: e.target.checked } } }))} /> Offer follow-up checks about 2 and 6 weeks after the programme</label>
       <label className="check"><input type="checkbox" checked={st.settings.journalPrompts ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, journalPrompts: e.target.checked } }))} /> Offer to save reflections to the journal after sessions and scenarios</label></section>
+    <section className="card"><h2>Offline use</h2><OfflineNote /></section>
     <section className="card"><h2>Your data</h2><p>Everything is stored in this browser on this device (IndexedDB). It is not encrypted. Nothing is sent anywhere: there are no accounts, analytics or servers. Clearing browser data, uninstalling, or private mode can erase it, and anyone who can use this device and browser can open it. Export a backup now and then.</p>
       <div className="row-btns"><button onClick={download}>Export backup</button>
         <label className="btn">Import backup<input className="sr-only" type="file" accept="application/json" onChange={async e => {

@@ -20,7 +20,7 @@ describe('engine', () => {
   it('mastery at threshold schedules spaced reviews', () => {
     expect(MASTERY_THRESHOLD).toBe(0.8);
     const s = doWeek1(); expect(phaseMastered(s, 1)).toBe(true);
-    expect(dueReviews(s, 1 * DAY)).toHaveLength(0); expect(dueReviews(s, 2 * DAY).length).toBe(15); // 11 original + 4 alternative items
+    expect(dueReviews(s, 1 * DAY)).toHaveLength(0); expect(dueReviews(s, 2 * DAY).length).toBe(16); // 11 original + 1 topic item (w01d4) + 4 alternative items
   });
   it('2 of 3 on a checkpoint (67%) is not mastery', () => {
     const r = allRight('w01d5'); r[Object.keys(r)[0]] = false;

@@ -3,11 +3,14 @@ import { enrich } from './enrich';
 import { phaseForWeek } from './phases';
 import { EXAMPLES } from './examples';
 import { EXTRA_TEACH } from './extra';
+import { TOPICS } from './topics';
 
 type C = [string, string[], number, string];
 const mk = (week: number, day: number, kind: Session['kind'], title: string, objective: string,
   teach: string[], practice: string[], checks: C[], reflect: string, claimIds: string[]): Session => {
   const id = `w${String(week).padStart(2, '0')}d${day}`;
+  const tb = TOPICS[id];
+  if (tb) { teach = [...teach, ...tb.teach]; checks = [...checks, tb.check]; }
   return enrich({
     id, week, day, phase: phaseForWeek(week).id, title, objective, kind,
     minutes: kind === 'checkpoint' ? 12 : 8, teach: EXTRA_TEACH[id] ? [...teach, EXTRA_TEACH[id]] : teach, example: EXAMPLES[id], practice, reflect, claimIds,

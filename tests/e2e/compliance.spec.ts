@@ -271,3 +271,77 @@ for (const [w, h] of [[768, 1024], [1280, 800]] as const) {
     }
   });
 }
+
+test('3.5 offline: export, delete and import a backup without a connection; offline-ready note', async ({ page, context }) => {
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); await page.evaluate(() => navigator.serviceWorker.ready);
+  await doSession(page, 'w01d1');
+  await context.setOffline(true);
+  await page.goto('./#/settings');
+  await expect(page.locator('[data-offline-ready]')).toHaveAttribute('data-offline-ready', 'yes');
+  await expect(page.getByText(/Offline ready/)).toBeVisible();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export backup' }).click()]);
+  const file = (await dl.path())!;
+  page.on('dialog', d => d.accept());
+  await page.getByRole('button', { name: 'Delete all data' }).click();
+  await expect(page.getByText('All data deleted.')).toBeVisible();
+  await page.locator('input[type=file]').setInputFiles(file);
+  await page.getByRole('button', { name: 'Replace current data' }).click();
+  await expect(page.getByText(/Import complete/)).toBeVisible();
+  await page.goto('./'); await expect(page.getByRole('heading', { name: 'The emotion chain' })).toBeVisible();
+  await context.setOffline(false);
+});
+
+test.describe('3.5 first visit without a service worker', () => {
+  test.use({ serviceWorkers: 'block' });
+  test('shows the first-visit download note', async ({ page }) => {
+    await page.goto('./#/settings');
+    await expect(page.getByText(/First visit: the app is still downloading/)).toBeVisible();
+  });
+});
+
+test('9.7 journal reflection has "What happened next?" as its own field', async ({ page }) => {
+  await page.goto('./#/journal');
+  await page.getByRole('button', { name: 'Full reflection' }).click();
+  await expect(page.getByText('Every field is optional.')).toBeVisible();
+  await page.getByLabel('What happened', { exact: true }).fill('Late reply from a client');
+  await page.getByLabel('What happened next?').fill('They apologised the next morning');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('They apologised the next morning')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('They apologised the next morning')).toBeVisible();
+});
+
+test('8.1 baseline saves the optional recurring-situations reflection separately', async ({ page }) => {
+  await page.goto('./#/assess/baseline');
+  await page.getByLabel(/which situations keep coming up/).fill('Monday status meetings');
+  for (const fs of await page.locator('fieldset.rating').all()) await fs.getByRole('radio').nth(2).check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await answerQuiz(page); await answerQuiz(page);
+  await page.getByRole('button', { name: 'See progress' }).click();
+  await expect(page.getByText('Situations you noted at baseline: Monday status meetings')).toBeVisible();
+});
+
+test('8.2 post check uses unseen items and adds a retention section', async ({ page }) => {
+  await doSession(page, 'w01d1'); await doSession(page, 'w01d2');
+  await page.goto('./#/assess/post');
+  for (const fs of await page.locator('fieldset.rating').all()) await fs.getByRole('radio').nth(3).check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Which statement is a camera fact?')).toBeVisible();
+  await answerQuiz(page);
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await answerQuiz(page);
+  await expect(page.getByText(/Retention: 2 questions from lessons/)).toBeVisible();
+  await answerQuiz(page);
+  await page.getByRole('button', { name: 'See progress' }).click();
+  await expect(page.getByRole('cell', { name: '2/2' })).toBeVisible();
+});
+
+test('6.L3b competency statement is shown before a lesson and in progress', async ({ page }) => {
+  await page.goto('./#/session/w01d1');
+  await page.getByText('Before you start: competency, prerequisites and time').click();
+  await expect(page.getByText(/Competency:/)).toBeVisible();
+  await page.goto('./#/progress');
+  await page.getByText(/Show all 48 skills/).click();
+  await expect(page.locator('.competency').first()).toContainText(/you can/i);
+});

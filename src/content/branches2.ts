@@ -14,7 +14,7 @@ export const BRANCHES2: Record<string, { next: string[]; prompt: string; options
     ['Drop it and hope things settle.', 0, 'Sometimes they do, but the issue is still live and was raised for a reason.', 'Comfort now.', 'Repair.', 'Rarely.']]),
   sc03: b(['The colleague explains: the section answers a different question from the brief. Others nod.',
     'The chair moves on quickly. The colleague looks irritated; nothing is resolved.',
-    'After the meeting a teammate tells you your complaint got back to the colleague.'],
+    'After the meeting the colleague explains their point to you, but two teammates still think your section was weak.'],
     'What is your next move?', [
     ['Check the brief, agree the fix with the colleague, and thank them for the catch.', 2, 'Turns the criticism into a better result, even though the public moment still stings.', 'The work and your standing.', 'Some pride.', 'When the point turns out to be valid.'],
     ['Ask the chair privately to make sure feedback in meetings is phrased more carefully.', 1, 'A fair norm to raise, but it does not address the content and can look like deflection.', 'Meeting norms.', 'Time on tone rather than the work.', 'If public feedback in that team is often harsh.'],
@@ -119,7 +119,7 @@ export const BRANCHES2: Record<string, { next: string[]; prompt: string; options
     ['Ask to be moved off the account.', 1, 'A legitimate protective choice; it may cost you work you valued.', 'Your wellbeing.', 'The account.', 'If remarks continue or you feel unsafe.']]),
   sc38: b(['Your manager asks the sender, who is embarrassed: it was an old list.',
     'The sender says "Oops, old list!" and adds you.',
-    'Weeks later you learn you were dropped from the project because you seemed disengaged.'],
+    'The next update also leaves you out. You still do not know whether it is deliberate.'],
     'What do you take from this?', [
     ['Checking the simplest explanation first is cheap and usually enough.', 2, 'A transferable habit; sometimes exclusion is real, and then evidence helps.', 'Relationships.', 'Nothing much.', 'Most ambiguous slights.'],
     ['People are careless; you need to watch more closely.', 1, 'Some vigilance is useful, but too much feeds suspicion.', 'Awareness.', 'Calm.', 'If omissions are repeated.'],

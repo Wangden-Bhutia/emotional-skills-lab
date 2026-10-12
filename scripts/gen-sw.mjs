@@ -6,7 +6,7 @@ import { readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 const dist = 'dist'; const files = [];
-const walk = d => readdirSync(d).forEach(f => { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : files.push(p); });
+const walk = d => readdirSync(d).forEach(f => { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else files.push(p); });
 walk(dist);
 const list = files.map(f => relative(dist, f)).filter(f => f !== 'sw.js' && f !== '404.html');
 const h = createHash('sha256'); list.forEach(f => h.update(f).update(readFileSync(join(dist, f))));

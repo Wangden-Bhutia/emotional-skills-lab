@@ -17,7 +17,7 @@ export const TRADEOFFS: Record<string, { r: T[]; f?: T[] }> = {
   sc03: { r: [
     ['Your goal of a better section and your standing as open to input.', 'Being visibly uncertain in front of the team.', 'Most work meetings where the comment is about the work.'],
     ['Face, briefly.', 'The meeting\'s focus and the colleague relationship.', 'Almost never in a group setting.'],
-    ['Calm in the room.', 'The chance to understand the point, plus rumination afterwards.', 'If the meeting is truly the wrong place, but then follow up directly rather than complaining.']] },
+    ['Calm in the room and the colleague\'s face.', 'The team hears the criticism with no answer.', 'When the meeting is the wrong place or you are too activated to reply well.']] },
   sc04: { r: [
     ['Your pride, briefly.', 'Family warmth over a small issue.', 'Rarely; the stakes are low.'],
     ['The relationship and useful information for next time.', 'Swallowing a little irritation at "again".', 'Low-stakes feedback from people you live with.'],
@@ -99,7 +99,7 @@ export const TRADEOFFS: Record<string, { r: T[]; f?: T[] }> = {
     ['Your week and your values.', 'Living with uncertainty.', 'Most waiting periods.'],
     ['Comfort from people close to you.', 'Reassurance fades fast and the need grows.', 'Asking once, and sharing the feeling, is helpful.']] },
   sc21: { r: [
-    ['A feeling of doing something.', 'Their comfort and your dignity.', 'Never.'],
+    ['Honesty about your worry.', 'It may feel like pressure; they still decide when to reply.', 'If several days pass and you would like a clear answer.'],
     ['Your dignity and the chance of a reply.', 'Waiting without knowing.', 'Most early-dating silences.'],
     ['Protection from rejection.', 'A possible relationship, based on a guess.', 'Only if they behaved badly.']] },
   sc22: { r: [
@@ -185,7 +185,7 @@ export const TRADEOFFS: Record<string, { r: T[]; f?: T[] }> = {
   sc38: { r: [
     ['Your sense of inclusion.', 'A relationship, over a guess.', 'Only after repeated, clear exclusion.'],
     ['Information, cheaply.', 'Nothing much.', 'Most missing cc\'s.'],
-    ['Protection from rejection.', 'Your role on the project.', 'Never.']] },
+    ['Goodwill and calm.', 'Information you may need now.', 'When the update has nothing you need to act on.']] },
   sc39: { r: [
     ['The friendship.', 'Admitting a possible mistake.', 'When someone seems hurt.'],
     ['Your pride.', 'The friendship.', 'Never.'],

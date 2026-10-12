@@ -1,8 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 import { SESSIONS } from '../../src/content/sessions';
-import { SJT_ITEMS, KNOWLEDGE_ITEMS } from '../../src/content/measures';
+import { SJT_ITEMS, KNOWLEDGE_ITEMS, POST_KNOWLEDGE_ITEMS, POST_SJT_ITEMS } from '../../src/content/measures';
 
-export const ITEMS = [...SESSIONS.flatMap(s => [...s.checks, ...s.altChecks]), ...SJT_ITEMS, ...KNOWLEDGE_ITEMS];
+export const ITEMS = [...SESSIONS.flatMap(s => [...s.checks, ...s.altChecks]), ...SJT_ITEMS, ...KNOWLEDGE_ITEMS, ...POST_KNOWLEDGE_ITEMS, ...POST_SJT_ITEMS];
 /** Answers whatever items the app shows (checkpoints draw from a pool), looking each up by its question text. */
 export async function answerQuiz(page: Page, correct = true) {
   for (;;) {

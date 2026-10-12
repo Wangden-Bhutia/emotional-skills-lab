@@ -1,4 +1,4 @@
-# Specification compliance checklist (full pass, 2026-10-13)
+# Specification compliance checklist (full pass 2026-10-13, updated after the partials pass)
 
 **Sources for this checklist.** Sections 1, 2.1 and 2.2, the start of 2.3, the end of 16, and all of 17 and 18 come from the user's prompt text that this agent could see. Sections 3 to 15 come from `docs/master-prompt-sections-3-15.md`. That file is a condensed extraction of the full prompt, written by the parent agent. It is not a verbatim copy. **Not checked:** the end of 2.3 and the start of 16 (the definition-of-done list before "Privacy disclosures…"). Neither appears in any text available to this agent, so this file has no rows for them.
 
@@ -41,7 +41,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 3.3c | Validate imports; handle malformed, incompatible and interrupted imports | pass | u:data::rejects malformed, truncated and foreign files; e:compliance › truncated import file is rejected |
 | 3.3d | Never silently overwrite (confirm, merge, backup) | pass | Confirm panel with Merge, Replace and Cancel; automatic pre-import backup; restore. e:compliance › 3.3 import asks before changing anything… |
 | 3.4 | Says data is not encrypted; explains browser limits; no secrets | pass | Settings "Your data", Welcome page; e:compliance › onboarding… (checks "not encrypted") |
-| 3.5 | Offline after SW cache, for all listed areas; first visit vs later | partial | Offline lesson, checkpoint and persistence tested. Export/import offline was not tested separately. The first-visit note is in docs/privacy.md and the README, not in the UI |
+| 3.5 | Offline after SW cache, for all listed areas; first visit vs later | pass | e:compliance › 3.5 offline: export, delete and import a backup without a connection; e:compliance › 3.5 first visit without a service worker (in-app note in Settings and Welcome) |
 | 3.6 | Storage behind an interface for Capacitor | pass | `KVStorage` interface; docs/android.md |
 
 ## 4 Research integrity
@@ -63,9 +63,9 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 5.1b | Slower pace without penalty | pass | Nothing expires; Welcome page says so |
 | 5.1c | 15–30 min; durations stated honestly | partial | Estimates 18–26 min, enforced by test. They are formula estimates, not measured with users |
 | 5.1d | No padding | pass | u:content::no duplicated teaching paragraphs |
-| 5.2 | Nine phases with the listed topics | partial | 9 phases match the spec titles. Topic-by-topic match was checked by reading `sessions.ts`, not by an automated test. Some sub-topics (for example "reinforcement and short-term relief", "unequal power") get one paragraph rather than a full session |
+| 5.2 | Nine phases with the listed topics | pass | 7 thin sub-topics now have full teaching blocks with a worked example and a scored item, added to existing sessions (`src/content/topics.ts`): limits of self-report (P1), when to express emotion (P4), assertive, aggressive and passive (P5), protective vs restrictive avoidance (P6), unequal power and incentives (P7), reinforcement and patterns vs causes (P8), and behavioural experiments (P8). Still 60 sessions, all 30 min or under. u:spec13::5.2 thin sub-topics deepened |
 | 5.3 | Each session has the listed parts | pass | u:content::session %s meets depth rules (activity, explain, apply, prerequisites, sources, duration, alt items) |
-| 5.3b | No vague advice | partial | Author review only. No automated check for vague wording |
+| 5.3b | No vague advice | pass | u:spec13::5.3b vague-advice check (phrases such as "stay calm", "be mindful", "think positively" are flagged unless the sentence is specific or contrasts them; the checker has its own test) |
 
 ## 6 Three-layer system
 | # | Requirement | Status | Evidence |
@@ -73,7 +73,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 6.L1 | Varied interactive formats with feedback that explains | pass | 5 activity types; u:content::activity types are varied |
 | 6.L2 | Explain-back: rubric, model answer, self-rating, revise, says it is not graded | pass | e:app › lesson has keyboard-operable activity … explain-back rubric |
 | 6.L3 | Objective mastery with alternative, cumulative and delayed items | pass | u:engine::checkpoint retake draws different items; cumulative items test |
-| 6.L3b | Per-skill competency, evidence, rules, threshold, remediation, reassessment | partial | Skill = lesson; rules are in the Assessment centre. No written competency statement per skill beyond the objective |
+| 6.L3b | Per-skill competency, evidence, rules, threshold, remediation, reassessment | pass | `src/content/competencies.ts`: a statement for each of the 48 skills plus a shared evidence rule; shown before each lesson and in Progress. u:spec13::6.L3b; e:compliance › 6.L3b competency statement is shown |
 | 6.1 | Completion, mastery and retention kept separate; remediation; no overall EI score | pass | Progress "Demonstrated performance"; u:engine::completion does not imply mastery |
 | 6.2 | Spaced review tied to objectives; schedule labelled a choice | pass | Review lists objectives; Settings text |
 
@@ -84,15 +84,15 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 7.1 | At least 6 per category, real coverage | pass | u:content::categories match spec 7.1 |
 | 7.2a | Narrative, facts, ambiguity, decision, 3 or more options, consequences | pass | u:spec13::at least 3 options per decision |
 | 7.2b | Trade-off feedback on every option (protects, costs, fits) | pass | `tradeoffs.ts`, `branches2.ts`; u:spec13::every scenario option … has feedback and trade-offs; e:compliance › 7.2/7.3 every option shows trade-offs |
-| 7.2c | Not one virtuous answer against absurd ones | partial | More than 75% of scenarios include a "partly effective" option (test). Some original scenarios still have one clearly weak option |
+| 7.2c | Not one virtuous answer against absurd ones | pass | sc03, sc21 and sc38 rewritten. Every decision now has at most one "likely to backfire" option and at least one partial or second strong option. u:spec13::7.2c plausible options |
 | 7.3 | Branching with proportionate consequences; no "perfect response" | pass | 29 of 43 branch, at least 3 per category; each follow-up says others' responses are not under your control. u:spec13::most scenarios branch |
 | 7.4 | Tracked by skill and type; alternatives; revisit without shame | pass | Progress table by category; "Try a similar scenario"; "Worth another try" list |
 
 ## 8 Baseline, post, follow-up
 | # | Requirement | Status | Evidence |
 |---|---|---|---|
-| 8.1 | Baseline: goals, confidence, knowledge, scenarios; not a diagnosis | partial | e:app › baseline assessment saves goals… The optional reflection on recurring situations is only the free-text goal note |
-| 8.2 | Post: knowledge, scenarios, explanation, self-report | partial | Post uses the same knowledge and scenario items as baseline (no unseen alternative set). It has no separate retention section |
+| 8.1 | Baseline: goals, confidence, knowledge, scenarios; not a diagnosis | pass | Separate optional `recurring` field, not analysed. e:compliance › 8.1 baseline saves the optional recurring-situations reflection |
+| 8.2 | Post: knowledge, scenarios, explanation, self-report, retention, unseen items | pass | New sets POST_KNOWLEDGE_ITEMS (6) and POST_SJT_ITEMS (8), not shared with baseline or lessons; retention section draws earlier-phase lesson items (also used in follow-ups). u:spec13::8.2 (2 tests); e:compliance › 8.2 post check uses unseen items |
 | 8.3 | Follow-ups at 2 and 6 weeks; postpone or turn off; results kept separate | pass | u:engine follow-up tests; Progress table |
 | 8.4 | ERQ and DERS-16 investigated; omitted if unverified | pass | Library "Not cited" section; register |
 
@@ -105,7 +105,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 9.4 | Lesson reader keeps progress across reload | pass | e:compliance › 9.4 lesson progress survives reload |
 | 9.5 | Assessment centre with transparent scoring | pass | `#/assess` |
 | 9.6 | Gym filters, practise, feedback, retry alternatives | pass | e:app › gym filters…; similar-scenario links |
-| 9.7 | Journal: listed fields, optional, edit and delete, no interpretation | partial | Fields cover the list, except a separate "what happened next" field, which is merged into "Outcome" |
+| 9.7 | Journal: listed fields, optional, edit and delete, no interpretation | pass | Fields: What happened / What I noticed / My interpretation / Emotion or impulse / What I did / What happened next? / What I will try next time. Schema 2→3 moves old "outcome" into "next". u:data::schema 2 -> 3 journal migration (3 tests); e:compliance › 9.7 |
 | 9.8 | Progress: by skill, assessment, review history; self-report kept apart | pass | Progress sections |
 | 9.9 | Library: citations, DOIs, use, limits, evidence type | pass | e:app › library shows verified sources |
 | 9.10 | Settings: export, import, reset, delete, preferences, privacy, about/version; confirmations | pass | Settings; every destructive action uses confirm() |
@@ -116,7 +116,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 10.1 | React, strict TS, Vite, IndexedDB, SW, Vitest, Playwright, Actions | pass | package.json, tsconfig strict |
 | 10.2 | Typed content; validation fails the build | pass | `npm run build` runs tsc; Vitest content tests run in CI before deploy |
 | 10.3 | Storage interface; versioned IDB; UI independent of storage | pass | `DB_VERSION`, `KVStorage`; u:data::IndexedDB adapter has an explicit version |
-| 10.4 | Versioned records; no duplicates or bad ranges; migrations; corrupt-data recovery | pass | `engine/data.ts`; u:data (schema migrations, corrupt-data recovery); e:compliance › 10.4 stored v1 data is migrated… |
+| 10.4 | Versioned records; no duplicates or bad ranges; migrations; corrupt-data recovery | pass | `engine/data.ts` (schema 3); u:data (schema migrations, corrupt-data recovery); e:compliance › 10.4 stored v1 data is migrated… |
 | 10.5a | Versioned caching | pass | Content-hash cache name (`scripts/gen-sw.mjs`) |
 | 10.5b | Tests: first load, offline reload, offline lesson/assessment/persistence | pass | e:app › works offline…; e:compliance › 10.5 offline… |
 | 10.5c | Tests: update, cache replacement, failed update, broken release not cached | pass | e:compliance › 10.5 service worker updates (2 tests) |
@@ -150,12 +150,12 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 13.1 | Curriculum checks (12 listed) | pass | u:content plus u:spec13::13.1 (prerequisites and remediation resolve, no placeholders, options have feedback, deterministic scoring) |
 | 13.2 | Assessment checks (10 listed) | pass | u:engine, u:spec13::13.2 |
 | 13.3 | Research checks | partial | Automated: DOI, metadata, use labels, no efficacy claims. Claims match abstracts, not full texts |
-| 13.4 | Functional e2e list (17 areas) | pass | 47 Playwright tests cover every listed area, including migrations, SW updates and keyboard |
+| 13.4 | Functional e2e list (17 areas) | pass | 53 Playwright tests cover every listed area, including migrations, SW updates and keyboard |
 
 ## 14 Execution stages
 | # | Requirement | Status | Evidence |
 |---|---|---|---|
-| 14.1–10 | Stages followed; docs written | partial | Stages done in order across 3 passes. No lint step (ESLint is not set up; tsc strict with noUnused is used instead) |
+| 14.1–10 | Stages followed; docs written; lint in CI | pass | ESLint 9 with typescript-eslint recommended and react-hooks recommended (`eslint.config.js`), 0 errors, no disable comments; `npm run lint` runs in CI before tests |
 
 ## 15 Deliverables
 | # | Requirement | Status | Evidence |

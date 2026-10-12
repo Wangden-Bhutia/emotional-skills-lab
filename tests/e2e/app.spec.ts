@@ -1,8 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { SESSIONS } from '../../src/content/sessions';
 import { SCENARIOS } from '../../src/content/scenarios';
-import { SJT_ITEMS, KNOWLEDGE_ITEMS } from '../../src/content/measures';
 
 import { answerQuiz, doSession } from './helpers';
 

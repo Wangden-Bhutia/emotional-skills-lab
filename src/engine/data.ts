@@ -13,6 +13,11 @@ const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 export const MIGRATIONS: Record<number, (s: Record<string, unknown>) => Record<string, unknown>> = {
   // 1 -> 2: add meta; legacy 'followup' assessments kept as-is; dedupe journal ids; clamp phase scores.
   1: s => ({ ...s, schema: 2, meta: { createdAt: Date.now() } }),
+  // 2 -> 3: reflection field "outcome" held what happened next; it moves to the dedicated "next" field (spec 9.7).
+  2: s => ({ ...s, schema: 3, journal: Array.isArray(s.journal) ? s.journal.map(e => {
+    if (!isObj(e) || e.outcome === undefined || e.next !== undefined) return e;
+    const { outcome, ...rest } = e; return { ...rest, next: outcome };
+  }) : s.journal }),
 };
 
 /** Upgrade any supported raw state to the current schema and validate it. Throws DataError when it cannot. */

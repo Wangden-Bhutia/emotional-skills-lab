@@ -4,7 +4,7 @@ import type { CheckItem, PhaseId } from '../content/types';
 
 export const MASTERY_THRESHOLD = 0.8; // design choice, not research-derived
 export const REVIEW_INTERVALS_DAYS = [2, 7, 21];
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const DAY = 86400000;
 
 export interface ItemState { stage: number; due: number; reviews: { at: number; correct: boolean }[] }
@@ -12,12 +12,14 @@ export interface ScenarioAttempt { scenarioId: string; at: number; emotions: num
 export interface JournalEntry {
   id: string; at: number; type: 'checkin' | 'reflection' | 'plan';
   emotions: { name: string; intensity: number }[]; trigger?: string; facts?: string; interpretation?: string;
-  urge?: string; strategy?: string; outcome?: string; lesson?: string; note?: string; editedAt?: number;
+  urge?: string; strategy?: string; outcome?: string; next?: string; lesson?: string; note?: string; editedAt?: number;
 }
 export type AssessmentKind = 'baseline' | 'post' | 'followup2' | 'followup6' | 'followup';
 export interface Assessment {
   kind: AssessmentKind; at: number; selfRatings: number[]; sjtCorrect: number; sjtTotal: number;
   goals?: string[]; goalNote?: string; confidence?: number; knowledgeCorrect?: number; knowledgeTotal?: number; explanation?: string;
+  /** Optional baseline reflection on recurring situations (spec 8.1). */ recurring?: string;
+  /** Retention section: earlier-phase lesson items (spec 8.2). */ retentionCorrect?: number; retentionTotal?: number; itemSet?: 'baseline' | 'post';
 }
 export type Ctx = 'lesson' | 'checkpoint' | 'review';
 export interface ExplainRecord { at: number; text: string; self: number[]; revised: boolean }
@@ -173,3 +175,10 @@ export function remediationFor(res: Record<string, boolean>): string[] {
   return [...new Set(Object.entries(res).filter(([, v]) => !v).map(([k]) => ITEM_SKILL[k]).filter(Boolean))];
 }
 
+
+/** Retention section for post-programme and follow-up checks: lesson items from completed phases 1 to 8,
+ * least exposed first, at most one per skill, deterministic for a given state. */
+export function retentionItems(st: AppState, n = 6): CheckItem[] {
+  const pool = SKILL_SESSIONS.filter(s => s.phase < 9 && st.completed[s.id]).map(s => [...s.checks, ...s.altChecks].sort((a, b) => exposures(st, a.id) - exposures(st, b.id) || a.id.localeCompare(b.id))[0]);
+  return seeded(pool, pool.length).sort((a, b) => exposures(st, a.id) - exposures(st, b.id)).slice(0, n);
+}
