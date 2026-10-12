@@ -1,20 +1,23 @@
-# Verification report (deepening pass, 12 Oct 2026)
+# Verification report (compliance pass, 13 Oct 2026)
 
-Commit verified: `294081e` on `main`, Wangden-Bhutia/emotional-skills-lab. Live: https://wangden-bhutia.github.io/emotional-skills-lab/
+Code commit verified: `0826ec1` on `main`, Wangden-Bhutia/emotional-skills-lab. Live: https://wangden-bhutia.github.io/emotional-skills-lab/ (the live `sw.js` cache name `esl-5458e339f6ba` matches the local build).
 
 ## Commands and results
 | Check | Result |
 |---|---|
 | `npm run typecheck` | 0 errors |
-| `npm test` (Vitest) | 192 passed, 0 failed |
+| `npm test` (Vitest) | 228 passed, 0 failed (4 files) |
 | `npm run build` | OK; service worker precaches 8 files |
-| `npx playwright test` (local preview, Pixel 7 profile, 412px) | 30 passed, 0 failed |
-| GitHub Actions "CI and deploy" run 38289719956 | success (typecheck, unit, build, e2e, Pages deploy) |
-| Playwright against live URL | 29 passed, 1 flaky: the theme pre-paint test timed out on its first try (1.2 s limit on a cold network fetch) and passed on retry; re-run 4 times in a row against live: 4 passed |
+| `npx playwright test` (local preview, Pixel 7 profile, 412px) | 47 passed, 0 failed |
+| GitHub Actions "CI and deploy" run 38292679695 | success (typecheck, unit, build, e2e, Pages deploy) |
+| Playwright against the live URL | 45 passed, 2 skipped (the service-worker update tests need a server they can change, so they run only locally), 0 failed, 0 flaky |
 
-## What the tests cover
-Content rules (depth, activity per lesson/practice, per-option feedback, explanation-back in every session, alternative items, prerequisites, 15 to 30 min estimate, varied activity types, no duplicate paragraphs, spec 7.1 categories, branching, transfer questions, knowledge items separate from lesson items, no prohibited claims). Engine (unlocking, completion vs mastery, retake rotation, cumulative items, remediation, per-skill mastery, follow-up timing, postpone and disable, export/import). Browser (lesson, checkpoint fail then retake with different questions and remediation, keyboard activity, sequence via buttons, explain-back rubric and revise, branching scenario, gym filters, baseline, journal edit and delete, export/delete/import, theme pre-paint, no external requests, axe WCAG 2.2 AA at 360px on 12 routes, manifest, offline).
+## New in this pass
+Trade-offs (protects, costs, fits) on all 43 scenarios' options. 29 branching scenarios (up from 8). 4 safety scenarios: sc36 plus three new ones, sc41 to sc43. Data schema v2 with migrations and corrupt-data recovery. Import shows a summary, then Merge, Replace or Cancel, with an automatic pre-import backup and restore. Service-worker fixes: error responses are never cached as the shell, and failed or good updates are tested. Also new: onboarding page, assessment centre, dashboard priorities and next action, lesson resume after reload, an evidence register shown in the Library, 3 newly verified sources, keyboard-only tests, and overflow tests at 768px and 1280px.
 
 ## Not verified
-- Real Android install and use; screen-reader walkthrough; real-user session timings; learning outcomes.
-- Requirements in the part of the master prompt that was not visible to the implementing agent (see `docs/spec-compliance.md`).
+- Real Android install; a manual screen-reader walkthrough; session timings with real users; learning outcomes.
+- The end of 2.3 and the start of 16 in the master prompt. Sections 3 to 15 were checked against a condensed extraction, not verbatim text.
+
+## Compliance totals (docs/spec-compliance.md)
+105 rows: 89 pass, 16 partial, 0 fail.
