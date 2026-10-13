@@ -3,6 +3,7 @@ import type { Scenario, ScenarioCategory, ResponseOption } from './types';
 import { DIFFICULTY, BRANCHES } from './scenarioExtra';
 import { BRANCHES2 } from './branches2';
 import { TRADEOFFS } from './tradeoffs';
+import { SKILL_SCENARIOS } from './skillScenarios';
 import { SAFETY_SCENARIOS } from './safetyScenarios';
 export { TRANSFER } from './scenarioExtra';
 type R = [string, 0 | 1 | 2, string];
@@ -204,4 +205,4 @@ export const SCENARIOS: Scenario[] = [...BASE.map(s => {
   const responses = s.id === 'sc36' ? s.responses.map((r, i) => i === 0 ? { ...r, feedback: 'A common, understandable way to get through an uncomfortable moment, but it leaves the remark unaddressed. You are not responsible for the client\'s behaviour; reporting it afterwards is reasonable.' } : r) : s.responses;
   return { ...s, safety: SAFETY_IDS.has(s.id) || undefined, difficulty: DIFFICULTY[s.id] ?? 2, responses: withTO(responses, t?.r),
     followUp: f && { ...f, options: withTO(f.options, t?.f) } };
-}), ...SAFETY_SCENARIOS].map(withFeedback);
+}), ...SAFETY_SCENARIOS, ...SKILL_SCENARIOS].map(withFeedback);

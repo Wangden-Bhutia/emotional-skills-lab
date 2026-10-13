@@ -135,3 +135,15 @@ describe('deepening pass: assessments (spec 9)', () => {
     expect(txt).not.toContain('\u2014');
   });
 });
+
+describe('scenarios in context', () => {
+  it('every lesson and practice session has at least one scenario authored for its exact skill', async () => {
+    const { SESSIONS } = await import('../../src/content/sessions');
+    const { SCENARIOS } = await import('../../src/content/scenarios');
+    const { SOURCES } = await import('../../src/content/sources');
+    const missing = SESSIONS.filter(s => (s.kind === 'lesson' || s.kind === 'practice') && !SCENARIOS.some(x => x.skill === s.title)).map(s => s.id);
+    expect(missing).toEqual([]);
+    const claims = new Set(SOURCES.flatMap(s => s.claims.map(c => c.id)));
+    for (const x of SCENARIOS) for (const c of x.claimIds) expect(claims.has(c), `${x.id} ${c}`).toBe(true);
+  });
+});
