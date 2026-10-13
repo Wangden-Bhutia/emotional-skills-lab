@@ -229,6 +229,6 @@ test('works offline after first load (service worker)', async ({ page, context }
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await page.goto('./#/gym');
-  await expect(page.getByRole('heading', { name: 'Scenario gym' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scenario library' })).toBeVisible();
   await context.setOffline(false);
 });

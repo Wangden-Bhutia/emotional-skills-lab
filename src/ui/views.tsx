@@ -29,7 +29,28 @@ import { useConfirm } from './confirm';
 import { SUPPORT } from '../content/support';
 const range = (r: readonly [number, number]) => `${r[0]} to ${r[1]} min`;
 
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
+/** Scenarios that practise a session's skill (scenario.skill names the lesson title). */
+export function scenariosFor(title: string) {
+  const exact = SCENARIOS.filter(x => x.skill === title);
+  if (exact.length) return exact;
+  // No scenario names this lesson's skill: offer ones linked to other lessons in the same phase, else easy general ones.
+  const phase = SESSIONS.find(s => s.title === title)?.phase;
+  const near = SCENARIOS.filter(x => SESSIONS.some(s => s.phase === phase && s.title === x.skill));
+  return (near.length ? near : SCENARIOS.filter(x => x.difficulty === 1 && !x.safety)).slice(0, 2);
+}
+/** One-shot prefill handed to Reflections by 'Save as reflection' buttons. */
+type Draft = Partial<Pick<JournalEntry, 'trigger' | 'facts' | 'interpretation' | 'urge' | 'strategy' | 'next' | 'lesson' | 'note'>>;
+let pendingDraft: Draft | null = null;
+export const saveAsReflection = (d: Draft) => { pendingDraft = d; go('#/me/reflections'); };
+/** Picks one scenario for Today: unseen ones linked to sessions in the current phase (or finished ones) first. */
+export function pickScenario(st: AppState) {
+  const tried = new Set(st.scenarios.map(a => a.scenarioId));
+  const ns = nextSession(st); const phase = ns?.phase ?? PHASES.at(-1)!.id;
+  const titles = new Set(SESSIONS.filter(s => s.phase === phase || st.completed[s.id]).map(s => s.title));
+  const inPhase = SCENARIOS.filter(x => SESSIONS.some(s => s.phase === phase && s.title === x.skill));
+  return inPhase.find(x => !tried.has(x.id)) ?? SCENARIOS.find(x => titles.has(x.skill) && !tried.has(x.id)) ?? SCENARIOS.find(x => !tried.has(x.id)) ?? SCENARIOS[0];
+}
 export const go = (h: string) => { location.hash = h; };
 const pct = (x: number | null) => (x === null ? 'No data yet' : `${Math.round(x * 100)}%`);
 const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -41,7 +62,6 @@ export function Home() {
   const fu = followupDue(st);
   const ns = nextSession(st);
   const due = dueReviews(st).length;
-  const m = metrics(st);
   const baseline = st.assessments.some(a => a.kind === 'baseline');
   const phase = ns ? PHASES[ns.phase - 1] : undefined;
   const priorities = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').slice(0, 3);
@@ -65,12 +85,7 @@ export function Home() {
     <InstallCard />
     {ns && <details className="card small"><summary>Why this session next</summary><p>{why} {ns.objective}</p></details>}
     {priorities.length > 0 && <section className="card"><h2 className="h3">Worth revisiting</h2><ul>{priorities.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: latest delayed answers were below the mastery threshold.</li>)}</ul></section>}
-    <div className="grid2">
-      <button className="tile" onClick={() => go('#/review')}><strong>{due}</strong><span>reviews due</span></button>
-      <button className="tile" onClick={() => go('#/progress')}><strong>{m.masteredSkills}/{SKILL_SESSIONS.length}</strong><span>skills at mastery threshold</span></button>
-      <button className="tile" onClick={() => go('#/programme')}><strong>{Object.keys(st.completed).length}/{SESSIONS.length}</strong><span>sessions finished</span></button>
-      <button className="tile" onClick={() => go('#/assess')}><strong>Checks</strong><span>assessment centre</span></button>
-    </div>
+    {ns && (() => { const sc = pickScenario(st); return <section className="card" aria-labelledby="prac-h"><p className="kicker"><span aria-hidden>🎭</span> Practise a scenario</p><h2 id="prac-h" className="h3">{sc.title}</h2><p className="small muted">Skill: {sc.skill} · {sc.context}</p><div className="row-btns"><button onClick={() => go(`#/scenarios/${sc.id}`)}>Practise this scenario</button><a className="pad" href="#/scenarios">All scenarios</a></div></section>; })()}
     <p className="muted small">This is skills training, not therapy or crisis care. In an emergency in India, dial 112. <a className="pad" href="#/help">Safety and support</a></p>
   </>);
 }
@@ -118,7 +133,8 @@ export function AssessCentre() {
 
 export function Programme() {
   const { st } = useApp();
-  return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order; completed ones stay open to revisit without changing your place.</p>
+  return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order; completed ones stay open to revisit without changing your place. Each lesson ends with scenarios that practise it.</p>
+    <p><a href="#/scenarios">All scenarios ({SCENARIOS.length})</a> · <a href="#/review">Reviews</a></p>
     {nextSession(st) && <p className="card small">Next: <a href={`#/session/${nextSession(st)!.id}`}>{nextSession(st)!.title}</a>, because sessions build on the one before. Each row shows completion and, for skills, mastery status.</p>}
     {PHASES.map(p => (
       <section key={p.id} className="card">
@@ -220,10 +236,12 @@ export function SessionView({ id }: { id: string }) {
         <h3>Summary: key points</h3><ul>{s.explain.keyPoints.map(k => <li key={k}>{k}</li>)}</ul>
         <h3>Application task</h3><p>{s.apply}</p>
         <p className="small muted">Sources: {s.claimIds.map(c => { const src = claimSource(c); return src ? <a key={c} href={`#/library/${src.id}`}>{src.authors.split(',')[0]} ({src.year}) </a> : null; })}</p>
+        {scenariosFor(s.title).length > 0 && <section className="practise" aria-labelledby="pt-h"><h3 id="pt-h">Practise this</h3><p className="small muted">Scenarios that use this skill in a realistic situation.</p><ul className="list">{scenariosFor(s.title).map(x => <li key={x.id}><a href={`#/scenarios/${x.id}`}>{x.title}</a>{st.scenarios.some(a => a.scenarioId === x.id) ? ' ✓' : ''}</li>)}</ul></section>}
         <label htmlFor="refl">Optional reflection: {s.reflect}</label>
         <textarea id="refl" value={reflect} onChange={e => setReflect(e.target.value)} rows={3} />
         <div className="row-btns">
           {isCp && !passed ? <button onClick={finish}>Continue without retaking</button> : <button className="primary" onClick={finish}>Save and continue</button>}
+          <button onClick={() => { const t = reflect.trim(); saveAsReflection({ trigger: `Lesson: ${s.title}`, strategy: s.apply, lesson: t || undefined }); }}>Save as reflection</button>
           {!assess && <button onClick={startCheck}>Retake with different questions</button>}</div>
       </section></>}
   </article>);
@@ -241,7 +259,7 @@ export function Gym() {
   const last = new Map(st.scenarios.map(a => [a.scenarioId, a]));
   const revisit = SCENARIOS.filter(s => last.get(s.id)?.quality === 0).slice(0, 5);
   const list = SCENARIOS.filter(s => (!cat || s.category === cat) && (!skill || s.skill === skill) && (!diff || s.difficulty === +diff) && (!ctx || s.context === ctx));
-  return (<><h1>Scenario gym</h1><p className="muted">Practise the full chain: facts, emotions, response, and sometimes a follow-up decision. {tried.size} of {SCENARIOS.length} tried.</p>
+  return (<><h1>Scenario library</h1><p className="muted">Practise the full chain: facts, emotions, response, and sometimes a follow-up decision. {tried.size} of {SCENARIOS.length} tried.</p>
     <section className="card filters" aria-label="Filters">
       <label className="field">Situation<select value={cat} onChange={e => setCat(e.target.value)}><option value="">All</option>{cats.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}</select></label>
       <label className="field">Skill<select value={skill} onChange={e => setSkill(e.target.value)}><option value="">All</option>{skills.map(c => <option key={c}>{c}</option>)}</select></label>
@@ -306,8 +324,9 @@ export function ScenarioView({ id }: { id: string }) {
       <textarea id="tr" rows={3} value={transfer} onChange={e => setTransfer(e.target.value)} />
       <div className="row-btns"><button className="primary" onClick={() => {
         if (transfer.trim() && st.settings.journalPrompts !== false) update(x => ({ ...x, journal: [{ id: crypto.randomUUID(), at: Date.now(), type: 'reflection', emotions: [], note: `Gym, ${s.title}: ${transfer.trim()}` }, ...x.journal] }));
-        go('#/gym');
+        go('#/scenarios');
       }}>{transfer.trim() && st.settings.journalPrompts !== false ? 'Save to journal and finish' : 'Finish'}</button></div>
+      <button onClick={() => saveAsReflection({ trigger: `Scenario: ${s.title}`, facts: s.facts.join(' '), strategy: resp !== null ? s.responses[resp].text : undefined, lesson: transfer.trim() || undefined })}>Save as reflection</button>
       {similar.length > 0 && <><h3>Try a similar scenario</h3><ul className="list">{similar.map(x => <li key={x.id}><a href={`#/gym/${x.id}`}>{x.title}</a></li>)}</ul></>}</section>}
   </article>);
 }
@@ -330,6 +349,7 @@ export function Journal() {
   const [editId, setEditId] = useState<string | null>(null);
   const [sel, setSel] = useState<Record<string, number>>({});
   const [f, setF] = useState<Record<string, string>>({});
+  useEffect(() => { if (pendingDraft) { const d = pendingDraft; pendingDraft = null; setMode('reflection'); setF(Object.fromEntries(Object.entries(d).filter(([, v]) => v)) as Record<string, string>); } }, []);
   const reset = () => { setMode(null); setEditId(null); setSel({}); setF({}); };
   const save = () => {
     const base = editId ? st.journal.find(y => y.id === editId) : undefined;
@@ -343,7 +363,7 @@ export function Journal() {
     window.scrollTo(0, 0);
   };
   const fld = (k: keyof JournalEntry, label: string) => <label key={k} className="field">{label}<textarea rows={2} value={f[k] ?? ''} onChange={e => setF(x => ({ ...x, [k]: e.target.value }))} /></label>;
-  return (<><h1>Journal</h1><p className="muted">Short by design. Stored only on this device.</p>
+  return (<><h1>Reflections</h1><p className="muted">Your journal: short by design, stored only on this device. <a href="#/me">Back to Me</a></p>
     {!mode && <div className="row-btns"><button className="primary" onClick={() => setMode('checkin')}>Quick check-in</button><button onClick={() => setMode('reflection')}>Full reflection</button><button onClick={() => setMode('plan')}>If-then plan</button></div>}
     {mode && <section className="card"><h2>{editId ? 'Edit entry' : { checkin: 'Quick check-in', reflection: 'Reflection', plan: 'If-then plan' }[mode]}</h2>
       {mode !== 'plan' && <fieldset><legend>Emotions (up to 3), tap to add</legend><div className="chips">
@@ -515,4 +535,32 @@ export function Help() {
     <section className="card"><h2>Mental-health support (India)</h2><p>{teleManas.label} is free and available by phone: <a className="pad" href="tel:14416">{teleManas.numbers[0]}</a> or <a className="pad" href="tel:18008914416">{teleManas.numbers[1]}</a>. You do not need to be in crisis to call. If difficult emotions persist or affect sleep, work or relationships for weeks, a qualified professional is the right next step.</p></section>
     <section className="card"><h2>Sexual harassment at work (India)</h2><p>{posh.summary}</p><p className="small muted">This is general information about the law, not legal advice.</p></section>
     <p className="small muted">Numbers and the legal route were checked on official government websites (112.gov.in, telemanas.mohfw.gov.in, wcd.nic.in) on 13 Oct 2026. Outside India, use your local emergency number. Content in this app is informed by published research listed in the Library, simplified for practice; individual results vary.</p></>);
+}
+
+const PHASE_ROWS = (st: AppState) => PHASES.map(p => {
+  const ss = SESSIONS.filter(s => s.phase === p.id);
+  const revs = Object.entries(st.items).filter(([id]) => ss.some(s => s.id === ITEM_SKILL[id])).flatMap(([, i]) => i.reviews);
+  return { p, ss, done: ss.filter(s => st.completed[s.id]).length, mastered: phaseMastered(st, p.id), retention: revs.length ? revs.filter(r => r.correct).length / revs.length : null };
+});
+/** Me: progress summary, reflections, assessments and everything else that used to be a tab or header link. */
+export function Me() {
+  const { st } = useApp();
+  const m = metrics(st); const rows = PHASE_ROWS(st);
+  return (<><h1>Me</h1>
+    <section className="card" aria-labelledby="me-prog"><h2 id="me-prog">Progress</h2>
+      <p className="small">{Object.keys(st.completed).length}/{SESSIONS.length} sessions finished · {m.masteredPhases}/{PHASES.length} phases mastered · retention {pct(m.retention)}</p>
+      <details><summary>By phase</summary><table className="small phase-table"><thead><tr><th scope="col">Phase</th><th scope="col">Done</th><th scope="col">Mastery</th><th scope="col">Retention</th></tr></thead><tbody>
+        {rows.map(r => <tr key={r.p.id}><th scope="row">{r.p.id}. {r.p.title}</th><td>{r.done}/{r.ss.length}</td><td>{r.mastered ? 'Mastered' : r.done ? 'Not yet' : '–'}</td><td>{pct(r.retention)}</td></tr>)}</tbody></table>
+        <p className="small"><a href="#/progress">Per-skill detail and charts</a></p></details>
+    </section>
+    <nav aria-label="Me sections"><ul className="list me-links">
+      <li><a className="row" href="#/me/reflections"><span aria-hidden>📝</span><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
+      <li><a className="row" href="#/assess"><span aria-hidden>📋</span><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
+      <li><a className="row" href="#/scenarios"><span aria-hidden>🎭</span><span>All scenarios</span><span className="muted small">{SCENARIOS.length}</span></a></li>
+      <li><a className="row" href="#/review"><span aria-hidden>🔁</span><span>Reviews</span><span className="muted small">{dueReviews(st).length} due</span></a></li>
+      <li><a className="row" href="#/library"><span aria-hidden>📚</span><span>Library</span><span className="muted small">evidence and sources</span></a></li>
+      <li><a className="row" href="#/help"><span aria-hidden>🛟</span><span>Help and safety</span><span className="muted small">112 · Tele-MANAS</span></a></li>
+      <li><a className="row" href="#/settings"><span aria-hidden>⚙</span><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
+    </ul></nav>
+  </>);
 }
