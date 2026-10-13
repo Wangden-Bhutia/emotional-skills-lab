@@ -45,3 +45,8 @@ Source: the UX/UI/content audit of 13 Oct 2026. Tests added: tests/e2e/ux.spec.t
 11. All browser confirm() calls are replaced by an accessible in-app modal dialog: Escape cancels, focus starts on the safe control and returns afterwards, and delete-all requires typing DELETE.
 
 Local results: lint clean, tsc clean, vitest 253 passed, Playwright 59 passed and 1 skipped (the measurement spec, which runs only on demand), build OK.
+
+## Skill-linked scenarios (13 Oct 2026)
+- 27 new scenarios (sc44–sc70) in `src/content/skillScenarios.ts`. There are now 70 in total, and every one of the 48 lesson and practice sessions has at least one scenario whose skill is that session's title. A unit test in content.test.ts ("scenarios in context") enforces this and also checks that every scenario claim ID exists in the verified sources.
+- Each new scenario has 3 options with protects/costs/fits trade-offs and 80+ character feedback; 13 of them branch. The mix is everyday and Indian workplace settings. sc68 points to Tele-MANAS and professional help and does not offer skills as a substitute.
+- Vitest: 281 passed. Playwright (local): 65 passed, 1 skipped.
