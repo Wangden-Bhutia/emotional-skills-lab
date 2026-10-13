@@ -225,7 +225,7 @@ test.describe('10.5 service worker updates', () => {
     expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())!.waiting)).toBeNull();
     await context.setOffline(true);
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Journal' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Reflections' })).toBeVisible();
     await expect(page.getByText('survives updates')).toBeVisible();
     await context.setOffline(false);
 

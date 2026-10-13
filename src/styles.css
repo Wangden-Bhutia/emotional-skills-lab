@@ -91,3 +91,14 @@ dialog.confirm::backdrop{background:rgba(0,0,0,.45)}
 dialog.confirm input{width:100%;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 .danger.solid{background:var(--bad);color:#fff;border-color:var(--bad)}
 @media(min-width:900px){.tabs{max-width:680px;margin:0 auto;border:1px solid var(--line);border-bottom:0;border-radius:14px 14px 0 0}}
+
+/* 3-tab bar: icon + text, 44px+ targets */
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabs a { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.tabs .ti { font-size: 1.15rem; line-height: 1; }
+.me-links a.row { min-height: 48px; text-decoration: none; }
+.phase-table { width: 100%; border-collapse: collapse; margin: .5rem 0; }
+.phase-table th, .phase-table td { text-align: left; padding: .3rem .25rem; border-bottom: 1px solid var(--line, #ddd); }
+.practise { margin-top: .75rem; }
+.tabs a { padding: 6px 2px; }
+.practise { margin: .75rem 0 1.25rem; } .practise li a { display: inline-block; min-height: 44px; padding: 10px 0; }
