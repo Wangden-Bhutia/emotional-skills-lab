@@ -433,16 +433,14 @@ export function Progress() {
         <div><dt>Phase mastery</dt><dd>{m.masteredPhases} of 9 phases</dd><dd className="small muted">Checkpoint score of {MASTERY_THRESHOLD * 100}% or more (design choice).</dd></div>
         <div><dt>Skill mastery</dt><dd>{m.masteredSkills} of {SKILL_SESSIONS.length} skills</dd><dd className="small muted">Latest checkpoint and review answers per skill.</dd></div>
         <div><dt>Retention</dt><dd>{pct(m.retention)}</dd><dd className="small muted">Correct on delayed reviews ({m.reviewsDone} answered).</dd></div>
-        <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl></section>
+        <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl>
+      <p className="small muted">Per-phase checkpoint scores and retakes are on the <a href="#/assess">Assessment centre</a>.</p></section>
     <section className="card"><h2>Scenario practice by situation type</h2><table><thead><tr><th>Situation</th><th>Attempts</th><th>Average rating</th></tr></thead><tbody>
       {(Object.keys(CATEGORY_LABELS) as ScenarioCategory[]).map(c => { const a = st.scenarios.filter(x => SCENARIOS.find(y => y.id === x.scenarioId)?.category === c);
         return <tr key={c}><td>{CATEGORY_LABELS[c]}</td><td>{a.length}</td><td>{a.length ? pct(a.reduce((t, x) => t + x.quality, 0) / (2 * a.length)) : '-'}</td></tr>; })}</tbody></table>
       <p className="small muted">Ratings follow this programme's teaching, not a validated key.</p></section>
     <section className="card"><h2>Review history</h2>{(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
       return h.length ? <ul className="small">{h.map((r, i) => <li key={i}>{fmt(r.at)}: {SESSIONS.find(x => x.id === ITEM_SKILL[r.id])?.title ?? r.id}, {r.correct ? 'recalled' : 'missed, back to first interval'}</li>)}</ul> : <p className="small">No reviews answered yet.</p>; })()}</section>
-    <section className="card"><h2>Phase mastery</h2><table><thead><tr><th>Phase</th><th>Best score</th><th>Status</th></tr></thead><tbody>
-      {PHASES.map(p => { const r = st.phaseResults[p.id] ?? []; const best = r.length ? Math.max(...r.map(x => x.score)) : null;
-        return <tr key={p.id}><td>{p.id}. {p.title}</td><td>{pct(best)}</td><td>{phaseMastered(st, p.id) ? 'Mastered' : r.length ? 'Retake' : 'Not yet'}</td></tr>; })}</tbody></table></section>
     <section className="card"><h2>Skills</h2><p className="small muted">A skill is mastered when your latest answers on at least 2 of its items in checkpoints or reviews are {MASTERY_THRESHOLD * 100}% correct. "Needs practice" links back to the lesson.</p>
       <details><summary>Show all {SKILL_SESSIONS.length} skills</summary><ul className="list">{SKILL_SESSIONS.map(s => { const k = skillStatus(st, s.id);
         return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}<p className="small muted competency">{COMPETENCIES[s.id]}</p></li>; })}</ul><p className="small muted">{EVIDENCE_RULE}</p></details></section>
