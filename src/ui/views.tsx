@@ -611,11 +611,9 @@ export function Me() {
     <nav aria-label="Me sections"><ul className="list me-links">
       <li><a className="row" href="#/me/reflections"><span aria-hidden>📝</span><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
       <li><a className="row" href="#/assess"><span aria-hidden>📋</span><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
-      <li><a className="row" href="#/scenarios"><span aria-hidden>🎭</span><span>All scenarios</span><span className="muted small">{SCENARIOS.length}</span></a></li>
-      <li><a className="row" href="#/review"><span aria-hidden>🔁</span><span>Reviews</span><span className="muted small">{dueReviews(st).length} due</span></a></li>
       <li><a className="row" href="#/library"><span aria-hidden>📚</span><span>Library</span><span className="muted small">evidence and sources</span></a></li>
-      <li><a className="row" href="#/help"><span aria-hidden>🛟</span><span>Help and safety</span><span className="muted small">112 · Tele-MANAS</span></a></li>
       <li><a className="row" href="#/settings"><span aria-hidden>⚙</span><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
     </ul></nav>
+    <p className="small muted">All scenarios and reviews live under <a href="#/programme">Programme</a>. Help and safety is always one tap away at the top of every page.</p>
   </>);
 }
