@@ -33,7 +33,7 @@ test('Me lists progress by phase and every section; Programme links to all scena
   await page.goto('./#/me');
   await page.getByText('By phase').click();
   await expect(page.getByRole('table')).toContainText('Foundations');
-  for (const n of ['Reflections', 'Assessments', 'All scenarios', 'Library', 'Help and safety', 'Settings']) await expect(page.getByRole('link', { name: new RegExp(n) })).toBeVisible();
+  for (const n of ['Reflections', 'Library', 'Settings']) await expect(page.getByRole('link', { name: new RegExp(n) })).toBeVisible();
   await page.goto('./#/programme'); await page.getByRole('link', { name: /All scenarios/ }).click();
   await expect(page.getByRole('heading', { name: 'Scenario library' })).toBeVisible();
   await expect(page.getByLabel('Skill')).toBeVisible();

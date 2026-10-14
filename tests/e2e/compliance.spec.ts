@@ -162,7 +162,8 @@ test('9.1/9.2/9.5 onboarding, dashboard priorities and assessment centre', async
   await page.getByRole('button', { name: 'Go to Today' }).click();
   await expect(page.getByText('New here?')).toHaveCount(0);
   await page.goto('./#/assess');
-  await expect(page.getByRole('heading', { name: 'Assessment centre' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
+  await page.getByText('How scoring works').click();
   await expect(page.getByText(/not a validated cutoff/)).toBeVisible();
 });
 

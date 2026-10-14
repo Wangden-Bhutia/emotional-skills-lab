@@ -15,11 +15,12 @@ import { ExplainBack } from './ExplainBack';
 import {
   checkpointItems, lessonItems, retakeLesson, remediationFor, skillStatus, SKILL_SESSIONS, ITEM_SKILL, postponeFollowup, FOLLOWUP_DAYS,
   ALL_ITEMS, MASTERY_THRESHOLD, retentionItems, REVIEW_INTERVALS_DAYS, answerReview, completeSession, dueReviews, emotionFrequency,
-  followupDue, isUnlocked, metrics, nextSession, phaseMastered, emptyState,
+  followupDue, isUnlocked, metrics, nextSession, phaseMastered, emptyState, currentStreak,
   type Assessment, type JournalEntry,
 } from '../engine/state';
 import { deleteAll, backupBeforeImport, readPreImportBackup } from '../storage/repo';
 import { exportData, importData, mergeStates, summarise, DataError } from '../engine/data';
+import { buildReminderIcs, type ReminderTime } from '../engine/ics';
 import { EVIDENCE, USE_LABEL } from '../content/evidence';
 import { SAFETY_NOTE } from '../content/safetyScenarios';
 import type { AppState } from '../engine/state';
@@ -57,6 +58,38 @@ const fmt = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 'num
 const claimSource = (cid: string) => SOURCES.find(s => s.claims.some(c => c.id === cid));
 const EMOTIONS = ['Anger', 'Irritation', 'Frustration', 'Anxiety', 'Fear', 'Sadness', 'Disappointment', 'Hurt', 'Shame', 'Guilt', 'Embarrassment', 'Resentment', 'Overwhelm', 'Calm', 'Content', 'Joy', 'Pride', 'Relief', 'Gratitude', 'Curiosity'];
 
+/** Glanceable "where am I" strip: sessions done, week, streak, and a 9-dot phase path.
+ * Sits above everything else on Today so progress is visible without digging into Me > Progress. */
+function ProgressStrip({ st }: { st: AppState }) {
+  const ns = nextSession(st);
+  const curPhase = ns ? ns.phase : 9;
+  const done = Object.keys(st.completed).length;
+  const streak = currentStreak(st);
+  return (<section className="card strip" aria-label="Your progress">
+    <div className="strip-row">
+      <div className="strip-stat"><strong>{done}<span className="small muted">/{SESSIONS.length}</span></strong><span className="small muted">sessions</span></div>
+      <div className="strip-stat"><strong>{ns ? ns.week : 12}<span className="small muted">/12</span></strong><span className="small muted">week</span></div>
+      <div className="strip-stat"><strong>{streak}</strong><span className="small muted">day streak{streak === 1 ? '' : 's'}</span></div>
+    </div>
+    <ol className="phase-path" aria-label="Phases">{PHASES.map(p => {
+      const state = phaseMastered(st, p.id) ? 'mastered' : p.id < curPhase ? 'behind' : p.id === curPhase ? 'current' : 'upcoming';
+      return <li key={p.id} className={state} title={`Phase ${p.id}: ${p.title}${state === 'mastered' ? ' (mastered)' : state === 'current' ? ' (in progress)' : ''}`}>
+        <span aria-hidden>{state === 'mastered' ? '✓' : p.id}</span><span className="sr-only">Phase {p.id}: {p.title}, {state === 'mastered' ? 'mastered' : state === 'current' ? 'in progress' : state === 'behind' ? 'completed, not yet mastered' : 'not started'}</span>
+      </li>;
+    })}</ol>
+  </section>);
+}
+/** Recap of the last thing you actually did, so "yesterday" means something concrete: its key points
+ * and, if you wrote one, your own words from the explain-back step. */
+function LastTime({ st, session }: { st: AppState; session?: typeof SESSIONS[number] }) {
+  if (!session) return null;
+  const expl = st.explanations?.[session.id]?.at(-1);
+  return (<details className="card small" open>
+    <summary>Last time: {session.title}</summary>
+    <ul>{session.explain.keyPoints.map(k => <li key={k}>{k}</li>)}</ul>
+    {expl?.text && <p className="quote small">In your own words: “{expl.text}”</p>}
+  </details>);
+}
 export function Home() {
   const { st, update, notice, clearNotice } = useApp();
   const fu = followupDue(st);
@@ -66,11 +99,13 @@ export function Home() {
   const phase = ns ? PHASES[ns.phase - 1] : undefined;
   const priorities = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').slice(0, 3);
   const prevIdx = ns ? SESSIONS.indexOf(ns) - 1 : -1;
+  const prevSession = prevIdx >= 0 ? SESSIONS[prevIdx] : undefined;
   const why = ns && (ns.prerequisites.length ? `It builds on ${ns.prerequisites.map(p => SESSIONS.find(x => x.id === p)?.title).filter(Boolean).join(' and ')}.` : prevIdx < 0 ? 'It is the first session.' : `It follows ${SESSIONS[prevIdx].title}.`);
   const firstRun = !st.settings.welcomed && !baseline && !Object.keys(st.completed).length;
   return (<>
     <h1>Today</h1>
     {notice && <div className="card warn" role="alert"><h2>Your saved data could not be read</h2><p>{notice}</p><button onClick={clearNotice}>Dismiss</button></div>}
+    {!firstRun && <ProgressStrip st={st} />}
     {ns ? <section className="card hero" aria-labelledby="next-h">
       <p className="kicker"><span aria-hidden>▶</span> Next session · Phase {ns.phase}: {phase!.title}</p>
       <h2 id="next-h">{ns.title}</h2>
@@ -80,6 +115,7 @@ export function Home() {
         : !baseline ? <p className="small hero-links">Optional: <a href="#/assess/baseline">take the baseline</a> so you can compare later.</p> : null}
     </section>
       : <section className="card hero"><h2>Programme complete</h2><p>Keep skills fresh with reviews and the gym.</p>{!st.assessments.some(a => a.kind === 'post') && <button className="primary wide" onClick={() => go('#/assess/post')}>Take post-programme check</button>}</section>}
+    {!firstRun && <LastTime st={st} session={prevSession} />}
     {due > 0 && <section className="card"><h2 className="h3">{due} review{due > 1 ? 's' : ''} due</h2><p className="small">A few minutes of recall keeps earlier skills fresh. Doing these before the next session is a good habit.</p><button onClick={() => go('#/review')}>Open reviews</button></section>}
     {fu && <section className="card"><h2 className="h3">Follow-up is due</h2><p className="small">A short check about {fu === 'followup2' ? 2 : 6} weeks after the programme. Optional.</p><div className="row-btns"><button onClick={() => go(`#/assess/${fu}`)}>Take follow-up</button><button onClick={() => update(x => postponeFollowup(x))}>Postpone a week</button></div></section>}
     <InstallCard />
@@ -113,32 +149,14 @@ export function Welcome() {
   </>);
 }
 
-export function AssessCentre() {
-  const { st } = useApp();
-  const due = dueReviews(st).length; const fu = followupDue(st);
-  const has = (k: Assessment['kind']) => st.assessments.some(a => a.kind === k);
-  const cps = SESSIONS.filter(s => s.kind === 'checkpoint');
-  return (<><h1>Assessment centre</h1>
-    <section className="card"><h2>How scoring works</h2><ul className="small"><li>Lesson checks: completion only. Finishing a lesson does not mean mastery.</li><li>Checkpoints: rule-scored items from the phase plus two from earlier phases. {MASTERY_THRESHOLD * 100}% or more marks the phase mastered (a design choice, not a validated cutoff). Retakes draw different items.</li><li>Skill mastery: your latest delayed answers (checkpoints and reviews) on at least 2 items of a skill.</li><li>Explain-it-back: you compare your own words with a rubric. The app does not grade it.</li><li>Reviews: items return after {REVIEW_INTERVALS_DAYS.join(', ')} days. A miss sends the item back to the first interval.</li></ul></section>
-    <section className="card"><h2>Delayed retrieval</h2><p>{due} review item{due === 1 ? '' : 's'} due.</p><button onClick={() => go('#/review')}>Open reviews</button></section>
-    <section className="card"><h2>Phase checkpoints (cumulative)</h2><ul className="list">{cps.map(c => { const r = st.phaseResults[c.phase] ?? []; return <li key={c.id}><a href={`#/session/${c.id}`}>Phase {c.phase}: {PHASES[c.phase - 1].title}</a> <span className="badge">{phaseMastered(st, c.phase) ? 'Mastered' : r.length ? `${r.length} attempt${r.length > 1 ? 's' : ''}, retake available` : isUnlocked(st, c.id) ? 'Available' : 'Locked'}</span></li>; })}</ul></section>
-    <section className="card"><h2>Remediation</h2>{SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').map(s => <p key={s.id}><a href={`#/session/${s.id}`}>{s.title}</a></p>)}{!SKILL_SESSIONS.some(s => skillStatus(st, s.id).status === 'needs practice') && <p className="small">Nothing flagged. Missed checkpoint questions link back to the lesson that teaches them.</p>}</section>
-    <section className="card"><h2>Baseline, post-programme and follow-ups</h2><ul className="list">
-      <li><a href="#/assess/baseline">Baseline</a> <span className="badge">{has('baseline') ? 'Taken' : 'Not taken'}</span></li>
-      <li>{nextSession(st) ? <>Post-programme <span className="small muted">(unlocks after all sessions)</span></> : <a href="#/assess/post">Post-programme</a>} <span className="badge">{has('post') ? 'Taken' : 'Not taken'}</span></li>
-      <li>Follow-ups at about 2 and 6 weeks <span className="badge">{fu ? 'Due' : has('followup6') ? 'Done' : 'Not due'}</span></li></ul>
-      <p className="small muted">Original, non-validated educational items. Results are shown separately and are not a diagnosis.</p></section>
-  </>);
-}
-
 export function Programme() {
   const { st } = useApp();
   return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order; completed ones stay open to revisit without changing your place. Each lesson ends with scenarios that practise it.</p>
     <p><a href="#/scenarios">All scenarios ({SCENARIOS.length})</a> · <a href="#/review">Reviews</a></p>
     {nextSession(st) && <p className="card small">Next: <a href={`#/session/${nextSession(st)!.id}`}>{nextSession(st)!.title}</a>, because sessions build on the one before. Each row shows completion and, for skills, mastery status.</p>}
     {PHASES.map(p => (
-      <section key={p.id} className="card">
-        <h2>Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
+      <section key={p.id} className={`card phase${p.id}`}>
+        <h2><span className="phase-dot" aria-hidden /> Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
         <p className="muted">{p.goal} {p.weeks.length > 1 ? `Weeks ${p.weeks.join(' and ')}` : `Week ${p.weeks[0]}`}.</p>
         <ul className="list">{SESSIONS.filter(s => s.phase === p.id).map(s => {
           const done = !!st.completed[s.id], open = isUnlocked(st, s.id);
@@ -205,9 +223,9 @@ export function SessionView({ id }: { id: string }) {
     <StepBar current={current} done={done} skip={s.activity ? undefined : 1} />
     {resumed && stage === 'explain' && <p className="card small" role="status">Resumed where you left off. <button className="link" onClick={() => setStage('learn')}>Back to the lesson</button></p>}
     {stage === 'learn' && <>
-      <details className="card small"><summary>Before you start: competency, prerequisites and time</summary>
+      <details className="card small aux"><summary>Before you start: competency, prerequisites and time</summary>
         {COMPETENCIES[s.id] && <p><strong>Competency:</strong> {COMPETENCIES[s.id]} <span className="muted">{EVIDENCE_RULE}</span></p>}
-        <p>{prereq.length ? <>Builds on: {prereq.map(p => <a key={p.id} href={`#/session/${p.id}`}>{p.title} </a>)}</> : 'No prerequisites.'}</p>
+        {prereq.length ? <><p>Builds on:</p><ul className="small">{prereq.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: {p.explain.keyPoints[0]}</li>)}</ul></> : <p>No prerequisites.</p>}
         <p className="muted">Time: {range(s.range)}. Reading about {est.words} words, {est.interactions} activity choices, {est.quizItems} questions{s.kind === 'checkpoint' ? '' : ', optional written explanation'}. Low end: faster reading, explanation skipped; high end: slower reading, explanation written. Derived from a measured walk-through of the content, not timed with real learners.</p></details>
       <section className="block learn" aria-label="Learn"><Kicker icon="📖">Learn</Kicker>{s.teach.map((p, i) => <p key={i}>{p}</p>)}
         <p className="small muted">Evidence: {s.claimIds.map(c => { const src = claimSource(c); return src ? <a key={c} href={`#/library/${src.id}`}>{src.authors.split(',')[0]} ({src.year}) </a> : null; })}</p></section>
@@ -390,24 +408,28 @@ export function Progress() {
   const A = (k: Assessment['kind']) => st.assessments.filter(a => a.kind === k).at(-1);
   const avg = (a?: Assessment) => a ? (a.selfRatings.reduce((x, y) => x + y, 0) / a.selfRatings.length + 1).toFixed(1) : 'Not taken';
   const fu = followupDue(st);
+  const due = dueReviews(st).length;
+  const cps = SESSIONS.filter(s => s.kind === 'checkpoint');
+  const needsPractice = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice');
   return (<><h1>Progress</h1>
     <p className="small muted">Demonstrated performance (what you showed in checks and scenarios) is kept apart from self-report (how you rated yourself). Neither is compared with other people, and there are no norms.</p>
+    <details className="card small"><summary>How scoring works</summary><ul className="small"><li>Lesson checks: completion only. Finishing a lesson does not mean mastery.</li><li>Checkpoints: rule-scored items from the phase plus two from earlier phases. {MASTERY_THRESHOLD * 100}% or more marks the phase mastered (a design choice, not a validated cutoff). Retakes draw different items.</li><li>Skill mastery: your latest delayed answers (checkpoints and reviews) on at least 2 items of a skill.</li><li>Explain-it-back: you compare your own words with a rubric. The app does not grade it.</li><li>Reviews: items return after {REVIEW_INTERVALS_DAYS.join(', ')} days. A miss sends the item back to the first interval.</li></ul></details>
     <section className="card"><h2>Demonstrated performance</h2>
       <dl className="metrics"><div><dt>Completion</dt><dd>{pct(m.completion)}</dd><dd className="small muted">Sessions finished. Does not mean mastered.</dd></div>
         <div><dt>Phase mastery</dt><dd>{m.masteredPhases} of 9 phases</dd><dd className="small muted">Checkpoint score of {MASTERY_THRESHOLD * 100}% or more (design choice).</dd></div>
         <div><dt>Skill mastery</dt><dd>{m.masteredSkills} of {SKILL_SESSIONS.length} skills</dd><dd className="small muted">Latest checkpoint and review answers per skill.</dd></div>
         <div><dt>Retention</dt><dd>{pct(m.retention)}</dd><dd className="small muted">Correct on delayed reviews ({m.reviewsDone} answered).</dd></div>
         <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl></section>
+    <section className="card"><h2>Phase checkpoints (cumulative)</h2><ul className="list">{cps.map(c => { const r = st.phaseResults[c.phase] ?? []; return <li key={c.id}><a href={`#/session/${c.id}`}>Phase {c.phase}: {PHASES[c.phase - 1].title}</a> <span className="badge">{phaseMastered(st, c.phase) ? 'Mastered' : r.length ? `${r.length} attempt${r.length > 1 ? 's' : ''}, retake available` : isUnlocked(st, c.id) ? 'Available' : 'Locked'}</span></li>; })}</ul></section>
     <section className="card"><h2>Scenario practice by situation type</h2><table><thead><tr><th>Situation</th><th>Attempts</th><th>Average rating</th></tr></thead><tbody>
       {(Object.keys(CATEGORY_LABELS) as ScenarioCategory[]).map(c => { const a = st.scenarios.filter(x => SCENARIOS.find(y => y.id === x.scenarioId)?.category === c);
         return <tr key={c}><td>{CATEGORY_LABELS[c]}</td><td>{a.length}</td><td>{a.length ? pct(a.reduce((t, x) => t + x.quality, 0) / (2 * a.length)) : '-'}</td></tr>; })}</tbody></table>
       <p className="small muted">Ratings follow this programme's teaching, not a validated key.</p></section>
-    <section className="card"><h2>Review history</h2>{(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
+    <section className="card"><h2>Reviews</h2><p className="small">{due} review item{due === 1 ? '' : 's'} due now.{due > 0 && <> <button onClick={() => go('#/review')}>Open reviews</button></>}</p>
+      {(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
       return h.length ? <ul className="small">{h.map((r, i) => <li key={i}>{fmt(r.at)}: {SESSIONS.find(x => x.id === ITEM_SKILL[r.id])?.title ?? r.id}, {r.correct ? 'recalled' : 'missed, back to first interval'}</li>)}</ul> : <p className="small">No reviews answered yet.</p>; })()}</section>
-    <section className="card"><h2>Phase mastery</h2><table><thead><tr><th>Phase</th><th>Best score</th><th>Status</th></tr></thead><tbody>
-      {PHASES.map(p => { const r = st.phaseResults[p.id] ?? []; const best = r.length ? Math.max(...r.map(x => x.score)) : null;
-        return <tr key={p.id}><td>{p.id}. {p.title}</td><td>{pct(best)}</td><td>{phaseMastered(st, p.id) ? 'Mastered' : r.length ? 'Retake' : 'Not yet'}</td></tr>; })}</tbody></table></section>
     <section className="card"><h2>Skills</h2><p className="small muted">A skill is mastered when your latest answers on at least 2 of its items in checkpoints or reviews are {MASTERY_THRESHOLD * 100}% correct. "Needs practice" links back to the lesson.</p>
+      <h3 className="h3">Needs practice</h3>{needsPractice.length ? needsPractice.map(s => <p key={s.id}><a href={`#/session/${s.id}`}>{s.title}</a></p>) : <p className="small">Nothing flagged. Missed checkpoint questions link back to the lesson that teaches them.</p>}
       <details><summary>Show all {SKILL_SESSIONS.length} skills</summary><ul className="list">{SKILL_SESSIONS.map(s => { const k = skillStatus(st, s.id);
         return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}<p className="small muted competency">{COMPETENCIES[s.id]}</p></li>; })}</ul><p className="small muted">{EVIDENCE_RULE}</p></details></section>
     <section className="card"><h2>Self-report and check results: baseline, post and follow-ups</h2>
@@ -483,11 +505,23 @@ export function Library({ id }: { id?: string }) {
   </>);
 }
 
+const DEFAULT_REMINDERS: (ReminderTime & { enabled: boolean })[] = [
+  { label: 'Emotional Skills Lab: morning practice', time: '09:00', enabled: true },
+  { label: 'Emotional Skills Lab: midday check-in', time: '14:00', enabled: true },
+  { label: 'Emotional Skills Lab: evening reflection', time: '20:30', enabled: false },
+];
 export function Settings() {
   const { st, update, storage, persistent } = useApp();
   const [ask, dialog] = useConfirm();
   const [msg, setMsg] = useState('');
   const [pending, setPending] = useState<AppState | null>(null);
+  const [reminders, setReminders] = useState(DEFAULT_REMINDERS);
+  const reminderCount = reminders.filter(r => r.enabled).length;
+  const downloadReminders = () => {
+    const ics = buildReminderIcs(reminders.filter(r => r.enabled));
+    const b = new Blob([ics], { type: 'text/calendar' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'emotional-skills-lab-reminders.ics'; a.click();
+  };
   const [backupAt, setBackupAt] = useState<number | null>(null);
   useEffect(() => { readPreImportBackup(storage).then(b => setBackupAt(b?.at ?? null)).catch(() => undefined); }, [storage, msg]);
   const download = () => { const b = new Blob([exportData(st)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `emotional-skills-lab-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setMsg('Export downloaded.'); };
@@ -501,9 +535,16 @@ export function Settings() {
   return (<><h1>Settings and privacy</h1>
     {!persistent && <p className="card warn">Storage is unavailable in this browser mode. Your progress will be lost when you close the app.</p>}
     <section className="card"><h2>Theme</h2><div className="chips">{(['auto', 'light', 'dark'] as const).map(t => <button key={t} className="chip" aria-pressed={st.settings.theme === t} onClick={() => update(x => ({ ...x, settings: { ...x.settings, theme: t } }))}>{t === 'auto' ? 'Match phone' : t[0].toUpperCase() + t.slice(1)}</button>)}</div></section>
-    <section className="card"><h2>Reviews, follow-ups and journal</h2><p>There are no notifications or reminders. Due reviews and follow-ups appear on Today. Review intervals are {REVIEW_INTERVALS_DAYS.join(', ')} days (an instructional design choice).</p>
+    <section className="card"><h2>Reviews, follow-ups and journal</h2><p>The app itself sends no push notifications: there is no server to send them from (by the same design choice as no accounts or analytics). Due reviews and follow-ups appear on Today when you open the app. Review intervals are {REVIEW_INTERVALS_DAYS.join(', ')} days (an instructional design choice).</p>
       <label className="check"><input type="checkbox" checked={st.settings.followups?.enabled ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, followups: { enabled: e.target.checked } } }))} /> Offer follow-up checks about 2 and 6 weeks after the programme</label>
       <label className="check"><input type="checkbox" checked={st.settings.journalPrompts ?? true} onChange={e => update(x => ({ ...x, settings: { ...x.settings, journalPrompts: e.target.checked } }))} /> Offer to save reflections to the journal after sessions and scenarios</label></section>
+    <section className="card"><h2>Daily reminders</h2>
+      <p className="small">To be pinged a few times a day, pick times below and download a small calendar file. Import it once into your phone's own calendar or reminders app (Add, or Subscribe/Import depending on the app); it repeats every day from there until you delete it, with no app or account involved.</p>
+      {reminders.map((r, i) => <div key={r.label} className="row-btns tight" style={{ alignItems: 'center' }}>
+        <label className="check" style={{ flex: 1 }}><input type="checkbox" checked={r.enabled} onChange={e => setReminders(x => x.map((y, j) => j === i ? { ...y, enabled: e.target.checked } : y))} /> {r.label.replace('Emotional Skills Lab: ', '')}</label>
+        <input type="time" value={r.time} aria-label={`Time for ${r.label.replace('Emotional Skills Lab: ', '')}`} onChange={e => setReminders(x => x.map((y, j) => j === i ? { ...y, time: e.target.value } : y))} disabled={!r.enabled} /></div>)}
+      <button className="primary" disabled={!reminderCount} onClick={downloadReminders}>Download {reminderCount || ''} reminder{reminderCount === 1 ? '' : 's'} (.ics)</button>
+      <p className="small muted">Deleting the imported event in your calendar app stops future reminders; this app cannot do that for you.</p></section>
     <section className="card"><h2>Offline use</h2><OfflineNote /></section>
     <section className="card"><h2>Your data</h2><p>Everything is stored in this browser on this device (IndexedDB). It is not encrypted. Nothing is sent anywhere: there are no accounts, analytics or servers. Clearing browser data, uninstalling, or private mode can erase it, and anyone who can use this device and browser can open it. Export a backup now and then.</p>
       <div className="row-btns"><button onClick={download}>Export backup</button>
@@ -550,17 +591,14 @@ export function Me() {
     <section className="card" aria-labelledby="me-prog"><h2 id="me-prog">Progress</h2>
       <p className="small">{Object.keys(st.completed).length}/{SESSIONS.length} sessions finished · {m.masteredPhases}/{PHASES.length} phases mastered · retention {pct(m.retention)}</p>
       <details><summary>By phase</summary><table className="small phase-table"><thead><tr><th scope="col">Phase</th><th scope="col">Done</th><th scope="col">Mastery</th><th scope="col">Retention</th></tr></thead><tbody>
-        {rows.map(r => <tr key={r.p.id}><th scope="row">{r.p.id}. {r.p.title}</th><td>{r.done}/{r.ss.length}</td><td>{r.mastered ? 'Mastered' : r.done ? 'Not yet' : '–'}</td><td>{pct(r.retention)}</td></tr>)}</tbody></table>
-        <p className="small"><a href="#/progress">Per-skill detail and charts</a></p></details>
+        {rows.map(r => <tr key={r.p.id}><th scope="row">{r.p.id}. {r.p.title}</th><td>{r.done}/{r.ss.length}</td><td>{r.mastered ? 'Mastered' : r.done ? 'Not yet' : '–'}</td><td>{pct(r.retention)}</td></tr>)}</tbody></table></details>
+      <p className="small"><a href="#/progress">Full progress: per-skill detail, checkpoints, reviews, baseline/post/follow-up checks</a></p>
     </section>
     <nav aria-label="Me sections"><ul className="list me-links">
       <li><a className="row" href="#/me/reflections"><span aria-hidden>📝</span><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
-      <li><a className="row" href="#/assess"><span aria-hidden>📋</span><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
-      <li><a className="row" href="#/scenarios"><span aria-hidden>🎭</span><span>All scenarios</span><span className="muted small">{SCENARIOS.length}</span></a></li>
-      <li><a className="row" href="#/review"><span aria-hidden>🔁</span><span>Reviews</span><span className="muted small">{dueReviews(st).length} due</span></a></li>
       <li><a className="row" href="#/library"><span aria-hidden>📚</span><span>Library</span><span className="muted small">evidence and sources</span></a></li>
-      <li><a className="row" href="#/help"><span aria-hidden>🛟</span><span>Help and safety</span><span className="muted small">112 · Tele-MANAS</span></a></li>
       <li><a className="row" href="#/settings"><span aria-hidden>⚙</span><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
     </ul></nav>
+    <p className="small muted">All scenarios and reviews live under <a href="#/programme">Programme</a>. Help and safety is always one tap away at the top of every page.</p>
   </>);
 }
