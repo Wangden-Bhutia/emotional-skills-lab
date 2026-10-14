@@ -112,6 +112,26 @@ export function metrics(st: AppState): Metrics {
     scenarioQuality: st.scenarios.length ? st.scenarios.reduce((a, s) => a + s.quality, 0) / (2 * st.scenarios.length) : null,
   };
 }
+/** Calendar days (local) that had any recorded activity: a session, a review, a scenario, or a journal entry. */
+export function activityDays(st: AppState): Set<string> {
+  const days = new Set<string>();
+  const add = (t: number) => days.add(new Date(t).toDateString());
+  for (const c of Object.values(st.completed)) add(c.at);
+  for (const i of Object.values(st.items)) for (const r of i.reviews) add(r.at);
+  for (const s of st.scenarios) add(s.at);
+  for (const j of st.journal) add(j.at);
+  return days;
+}
+/** Consecutive days of activity up to and including today, or ending yesterday if today has nothing yet
+ * (so the streak does not drop to 0 the moment you wake up). */
+export function currentStreak(st: AppState, now = Date.now()): number {
+  const days = activityDays(st);
+  let t = now;
+  if (!days.has(new Date(t).toDateString())) t -= DAY;
+  let n = 0;
+  while (days.has(new Date(t).toDateString())) { n++; t -= DAY; }
+  return n;
+}
 export function emotionFrequency(st: AppState) {
   const m = new Map<string, number>();
   for (const e of st.journal) for (const x of e.emotions) m.set(x.name, (m.get(x.name) ?? 0) + 1);
