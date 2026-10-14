@@ -173,8 +173,8 @@ export function Programme() {
     <p><a href="#/scenarios">All scenarios ({SCENARIOS.length})</a> · <a href="#/review">Reviews</a></p>
     {nextSession(st) && <p className="card small">Next: <a href={`#/session/${nextSession(st)!.id}`}>{nextSession(st)!.title}</a>, because sessions build on the one before. Each row shows completion and, for skills, mastery status.</p>}
     {PHASES.map(p => (
-      <section key={p.id} className="card">
-        <h2>Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
+      <section key={p.id} className={`card phase${p.id}`}>
+        <h2><span className="phase-dot" aria-hidden /> Phase {p.id}: {p.title} {phaseMastered(st, p.id) && <span className="badge">Mastered</span>}</h2>
         <p className="muted">{p.goal} {p.weeks.length > 1 ? `Weeks ${p.weeks.join(' and ')}` : `Week ${p.weeks[0]}`}.</p>
         <ul className="list">{SESSIONS.filter(s => s.phase === p.id).map(s => {
           const done = !!st.completed[s.id], open = isUnlocked(st, s.id);

@@ -1,6 +1,9 @@
-:root{--bg:#f6f4ef;--fg:#1d2422;--muted:#55605c;--card:#fff;--line:#d9d5cc;--acc:#2f5d62;--acc-fg:#fff;--soft:#e6efee;--good:#1f6b3a;--bad:#a12a2a;--mid:#8a5a00;color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121615;--fg:#e9eeec;--muted:#a9b4b0;--card:#1c2220;--line:#33403c;--acc:#7fc4c4;--acc-fg:#0d1514;--soft:#1f2e2c;--good:#7bd197;--bad:#ff9a9a;--mid:#f0c060;color-scheme:dark}}
-[data-theme=dark]{--bg:#121615;--fg:#e9eeec;--muted:#a9b4b0;--card:#1c2220;--line:#33403c;--acc:#7fc4c4;--acc-fg:#0d1514;--soft:#1f2e2c;--good:#7bd197;--bad:#ff9a9a;--mid:#f0c060;color-scheme:dark}
+:root{--bg:#f6f4ef;--fg:#1d2422;--muted:#55605c;--card:#fff;--line:#d9d5cc;--acc:#2f5d62;--acc-fg:#fff;--soft:#e6efee;--good:#1f6b3a;--bad:#a12a2a;--mid:#8a5a00;
+  --p1:#2f5d62;--p2:#6a4c93;--p3:#c0562d;--p4:#3a7d44;--p5:#a68a00;--p6:#b23a6c;--p7:#2f6690;--p8:#8c5e3c;--p9:#5c5470;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#121615;--fg:#e9eeec;--muted:#a9b4b0;--card:#1c2220;--line:#33403c;--acc:#7fc4c4;--acc-fg:#0d1514;--soft:#1f2e2c;--good:#7bd197;--bad:#ff9a9a;--mid:#f0c060;
+  --p1:#7fc4c4;--p2:#c3abf0;--p3:#eda47c;--p4:#8fd19e;--p5:#f0c060;--p6:#f1a3c4;--p7:#8ec3e8;--p8:#d2ad84;--p9:#b7aee0;color-scheme:dark}}
+[data-theme=dark]{--bg:#121615;--fg:#e9eeec;--muted:#a9b4b0;--card:#1c2220;--line:#33403c;--acc:#7fc4c4;--acc-fg:#0d1514;--soft:#1f2e2c;--good:#7bd197;--bad:#ff9a9a;--mid:#f0c060;
+  --p1:#7fc4c4;--p2:#c3abf0;--p3:#eda47c;--p4:#8fd19e;--p5:#f0c060;--p6:#f1a3c4;--p7:#8ec3e8;--p8:#d2ad84;--p9:#b7aee0;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 a{color:var(--acc)}
@@ -92,6 +95,19 @@ main:focus,main:focus-visible{outline:none}
 .aux{background:transparent;border-style:dashed}
 /* Result screen: several h3 sections in a row read as one wall without a rule between them. */
 .result h3{margin-top:1.2rem;padding-top:.7rem;border-top:1px solid var(--line)}
+
+/* Programme: each of the 9 phases gets its own colour (decorative only — phase number and title still
+   carry the meaning) so the long session list reads as 9 distinct chapters instead of one flat list. */
+.phase-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.phase1{border-left:5px solid var(--p1)}.phase1 .phase-dot{background:var(--p1)}
+.phase2{border-left:5px solid var(--p2)}.phase2 .phase-dot{background:var(--p2)}
+.phase3{border-left:5px solid var(--p3)}.phase3 .phase-dot{background:var(--p3)}
+.phase4{border-left:5px solid var(--p4)}.phase4 .phase-dot{background:var(--p4)}
+.phase5{border-left:5px solid var(--p5)}.phase5 .phase-dot{background:var(--p5)}
+.phase6{border-left:5px solid var(--p6)}.phase6 .phase-dot{background:var(--p6)}
+.phase7{border-left:5px solid var(--p7)}.phase7 .phase-dot{background:var(--p7)}
+.phase8{border-left:5px solid var(--p8)}.phase8 .phase-dot{background:var(--p8)}
+.phase9{border-left:5px solid var(--p9)}.phase9 .phase-dot{background:var(--p9)}
 .block.explain>.card{border-top:4px solid var(--mid)}
 .block.check>.card{border-top:4px solid var(--good)}
 .qbar{height:4px;background:var(--line);border-radius:4px;margin:-4px 0 10px;overflow:hidden}.qbar span{display:block;height:100%;background:var(--good)}
