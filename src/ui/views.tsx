@@ -241,7 +241,7 @@ export function SessionView({ id }: { id: string }) {
     <StepBar current={current} done={done} skip={s.activity ? undefined : 1} />
     {resumed && stage === 'explain' && <p className="card small" role="status">Resumed where you left off. <button className="link" onClick={() => setStage('learn')}>Back to the lesson</button></p>}
     {stage === 'learn' && <>
-      <details className="card small"><summary>Before you start: competency, prerequisites and time</summary>
+      <details className="card small aux"><summary>Before you start: competency, prerequisites and time</summary>
         {COMPETENCIES[s.id] && <p><strong>Competency:</strong> {COMPETENCIES[s.id]} <span className="muted">{EVIDENCE_RULE}</span></p>}
         {prereq.length ? <><p>Builds on:</p><ul className="small">{prereq.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: {p.explain.keyPoints[0]}</li>)}</ul></> : <p>No prerequisites.</p>}
         <p className="muted">Time: {range(s.range)}. Reading about {est.words} words, {est.interactions} activity choices, {est.quizItems} questions{s.kind === 'checkpoint' ? '' : ', optional written explanation'}. Low end: faster reading, explanation skipped; high end: slower reading, explanation written. Derived from a measured walk-through of the content, not timed with real learners.</p></details>
