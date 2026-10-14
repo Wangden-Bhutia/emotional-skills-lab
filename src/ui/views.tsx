@@ -149,24 +149,6 @@ export function Welcome() {
   </>);
 }
 
-export function AssessCentre() {
-  const { st } = useApp();
-  const due = dueReviews(st).length; const fu = followupDue(st);
-  const has = (k: Assessment['kind']) => st.assessments.some(a => a.kind === k);
-  const cps = SESSIONS.filter(s => s.kind === 'checkpoint');
-  return (<><h1>Assessment centre</h1>
-    <section className="card"><h2>How scoring works</h2><ul className="small"><li>Lesson checks: completion only. Finishing a lesson does not mean mastery.</li><li>Checkpoints: rule-scored items from the phase plus two from earlier phases. {MASTERY_THRESHOLD * 100}% or more marks the phase mastered (a design choice, not a validated cutoff). Retakes draw different items.</li><li>Skill mastery: your latest delayed answers (checkpoints and reviews) on at least 2 items of a skill.</li><li>Explain-it-back: you compare your own words with a rubric. The app does not grade it.</li><li>Reviews: items return after {REVIEW_INTERVALS_DAYS.join(', ')} days. A miss sends the item back to the first interval.</li></ul></section>
-    <section className="card"><h2>Delayed retrieval</h2><p>{due} review item{due === 1 ? '' : 's'} due.</p><button onClick={() => go('#/review')}>Open reviews</button></section>
-    <section className="card"><h2>Phase checkpoints (cumulative)</h2><ul className="list">{cps.map(c => { const r = st.phaseResults[c.phase] ?? []; return <li key={c.id}><a href={`#/session/${c.id}`}>Phase {c.phase}: {PHASES[c.phase - 1].title}</a> <span className="badge">{phaseMastered(st, c.phase) ? 'Mastered' : r.length ? `${r.length} attempt${r.length > 1 ? 's' : ''}, retake available` : isUnlocked(st, c.id) ? 'Available' : 'Locked'}</span></li>; })}</ul></section>
-    <section className="card"><h2>Remediation</h2>{SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice').map(s => <p key={s.id}><a href={`#/session/${s.id}`}>{s.title}</a></p>)}{!SKILL_SESSIONS.some(s => skillStatus(st, s.id).status === 'needs practice') && <p className="small">Nothing flagged. Missed checkpoint questions link back to the lesson that teaches them.</p>}</section>
-    <section className="card"><h2>Baseline, post-programme and follow-ups</h2><ul className="list">
-      <li><a href="#/assess/baseline">Baseline</a> <span className="badge">{has('baseline') ? 'Taken' : 'Not taken'}</span></li>
-      <li>{nextSession(st) ? <>Post-programme <span className="small muted">(unlocks after all sessions)</span></> : <a href="#/assess/post">Post-programme</a>} <span className="badge">{has('post') ? 'Taken' : 'Not taken'}</span></li>
-      <li>Follow-ups at about 2 and 6 weeks <span className="badge">{fu ? 'Due' : has('followup6') ? 'Done' : 'Not due'}</span></li></ul>
-      <p className="small muted">Original, non-validated educational items. Results are shown separately and are not a diagnosis.</p></section>
-  </>);
-}
-
 export function Programme() {
   const { st } = useApp();
   return (<><h1>Programme</h1><p className="muted">12 weeks, 9 phases, {SESSIONS.length} sessions. Sessions unlock in order; completed ones stay open to revisit without changing your place. Each lesson ends with scenarios that practise it.</p>
@@ -426,22 +408,28 @@ export function Progress() {
   const A = (k: Assessment['kind']) => st.assessments.filter(a => a.kind === k).at(-1);
   const avg = (a?: Assessment) => a ? (a.selfRatings.reduce((x, y) => x + y, 0) / a.selfRatings.length + 1).toFixed(1) : 'Not taken';
   const fu = followupDue(st);
+  const due = dueReviews(st).length;
+  const cps = SESSIONS.filter(s => s.kind === 'checkpoint');
+  const needsPractice = SKILL_SESSIONS.filter(s => skillStatus(st, s.id).status === 'needs practice');
   return (<><h1>Progress</h1>
     <p className="small muted">Demonstrated performance (what you showed in checks and scenarios) is kept apart from self-report (how you rated yourself). Neither is compared with other people, and there are no norms.</p>
+    <details className="card small"><summary>How scoring works</summary><ul className="small"><li>Lesson checks: completion only. Finishing a lesson does not mean mastery.</li><li>Checkpoints: rule-scored items from the phase plus two from earlier phases. {MASTERY_THRESHOLD * 100}% or more marks the phase mastered (a design choice, not a validated cutoff). Retakes draw different items.</li><li>Skill mastery: your latest delayed answers (checkpoints and reviews) on at least 2 items of a skill.</li><li>Explain-it-back: you compare your own words with a rubric. The app does not grade it.</li><li>Reviews: items return after {REVIEW_INTERVALS_DAYS.join(', ')} days. A miss sends the item back to the first interval.</li></ul></details>
     <section className="card"><h2>Demonstrated performance</h2>
       <dl className="metrics"><div><dt>Completion</dt><dd>{pct(m.completion)}</dd><dd className="small muted">Sessions finished. Does not mean mastered.</dd></div>
         <div><dt>Phase mastery</dt><dd>{m.masteredPhases} of 9 phases</dd><dd className="small muted">Checkpoint score of {MASTERY_THRESHOLD * 100}% or more (design choice).</dd></div>
         <div><dt>Skill mastery</dt><dd>{m.masteredSkills} of {SKILL_SESSIONS.length} skills</dd><dd className="small muted">Latest checkpoint and review answers per skill.</dd></div>
         <div><dt>Retention</dt><dd>{pct(m.retention)}</dd><dd className="small muted">Correct on delayed reviews ({m.reviewsDone} answered).</dd></div>
-        <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl>
-      <p className="small muted">Per-phase checkpoint scores and retakes are on the <a href="#/assess">Assessment centre</a>.</p></section>
+        <div><dt>Scenario quality</dt><dd>{pct(m.scenarioQuality)}</dd><dd className="small muted">Average rating of gym responses.</dd></div></dl></section>
+    <section className="card"><h2>Phase checkpoints (cumulative)</h2><ul className="list">{cps.map(c => { const r = st.phaseResults[c.phase] ?? []; return <li key={c.id}><a href={`#/session/${c.id}`}>Phase {c.phase}: {PHASES[c.phase - 1].title}</a> <span className="badge">{phaseMastered(st, c.phase) ? 'Mastered' : r.length ? `${r.length} attempt${r.length > 1 ? 's' : ''}, retake available` : isUnlocked(st, c.id) ? 'Available' : 'Locked'}</span></li>; })}</ul></section>
     <section className="card"><h2>Scenario practice by situation type</h2><table><thead><tr><th>Situation</th><th>Attempts</th><th>Average rating</th></tr></thead><tbody>
       {(Object.keys(CATEGORY_LABELS) as ScenarioCategory[]).map(c => { const a = st.scenarios.filter(x => SCENARIOS.find(y => y.id === x.scenarioId)?.category === c);
         return <tr key={c}><td>{CATEGORY_LABELS[c]}</td><td>{a.length}</td><td>{a.length ? pct(a.reduce((t, x) => t + x.quality, 0) / (2 * a.length)) : '-'}</td></tr>; })}</tbody></table>
       <p className="small muted">Ratings follow this programme's teaching, not a validated key.</p></section>
-    <section className="card"><h2>Review history</h2>{(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
+    <section className="card"><h2>Reviews</h2><p className="small">{due} review item{due === 1 ? '' : 's'} due now.{due > 0 && <> <button onClick={() => go('#/review')}>Open reviews</button></>}</p>
+      {(() => { const h = Object.entries(st.items).flatMap(([id, it]) => it.reviews.map(r => ({ id, ...r }))).sort((a, b) => b.at - a.at).slice(0, 10);
       return h.length ? <ul className="small">{h.map((r, i) => <li key={i}>{fmt(r.at)}: {SESSIONS.find(x => x.id === ITEM_SKILL[r.id])?.title ?? r.id}, {r.correct ? 'recalled' : 'missed, back to first interval'}</li>)}</ul> : <p className="small">No reviews answered yet.</p>; })()}</section>
     <section className="card"><h2>Skills</h2><p className="small muted">A skill is mastered when your latest answers on at least 2 of its items in checkpoints or reviews are {MASTERY_THRESHOLD * 100}% correct. "Needs practice" links back to the lesson.</p>
+      <h3 className="h3">Needs practice</h3>{needsPractice.length ? needsPractice.map(s => <p key={s.id}><a href={`#/session/${s.id}`}>{s.title}</a></p>) : <p className="small">Nothing flagged. Missed checkpoint questions link back to the lesson that teaches them.</p>}
       <details><summary>Show all {SKILL_SESSIONS.length} skills</summary><ul className="list">{SKILL_SESSIONS.map(s => { const k = skillStatus(st, s.id);
         return <li key={s.id}>{k.status === 'needs practice' ? <a href={`#/session/${s.id}`}>{s.title}</a> : s.title}: <span className="badge">{k.status}</span>{k.score !== null && <span className="small muted"> {pct(k.score)} of {k.answered}</span>}<p className="small muted competency">{COMPETENCIES[s.id]}</p></li>; })}</ul><p className="small muted">{EVIDENCE_RULE}</p></details></section>
     <section className="card"><h2>Self-report and check results: baseline, post and follow-ups</h2>
@@ -603,12 +591,11 @@ export function Me() {
     <section className="card" aria-labelledby="me-prog"><h2 id="me-prog">Progress</h2>
       <p className="small">{Object.keys(st.completed).length}/{SESSIONS.length} sessions finished · {m.masteredPhases}/{PHASES.length} phases mastered · retention {pct(m.retention)}</p>
       <details><summary>By phase</summary><table className="small phase-table"><thead><tr><th scope="col">Phase</th><th scope="col">Done</th><th scope="col">Mastery</th><th scope="col">Retention</th></tr></thead><tbody>
-        {rows.map(r => <tr key={r.p.id}><th scope="row">{r.p.id}. {r.p.title}</th><td>{r.done}/{r.ss.length}</td><td>{r.mastered ? 'Mastered' : r.done ? 'Not yet' : '–'}</td><td>{pct(r.retention)}</td></tr>)}</tbody></table>
-        <p className="small"><a href="#/progress">Per-skill detail and charts</a></p></details>
+        {rows.map(r => <tr key={r.p.id}><th scope="row">{r.p.id}. {r.p.title}</th><td>{r.done}/{r.ss.length}</td><td>{r.mastered ? 'Mastered' : r.done ? 'Not yet' : '–'}</td><td>{pct(r.retention)}</td></tr>)}</tbody></table></details>
+      <p className="small"><a href="#/progress">Full progress: per-skill detail, checkpoints, reviews, baseline/post/follow-up checks</a></p>
     </section>
     <nav aria-label="Me sections"><ul className="list me-links">
       <li><a className="row" href="#/me/reflections"><span aria-hidden>📝</span><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
-      <li><a className="row" href="#/assess"><span aria-hidden>📋</span><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
       <li><a className="row" href="#/library"><span aria-hidden>📚</span><span>Library</span><span className="muted small">evidence and sources</span></a></li>
       <li><a className="row" href="#/settings"><span aria-hidden>⚙</span><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
     </ul></nav>

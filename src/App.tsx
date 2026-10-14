@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StoreProvider, useApp } from './ui/store';
-import { Me, AssessCentre, Welcome, AssessView, Gym, Help, Home, Journal, Library, Programme, Progress, Review, ScenarioView, SessionView, Settings } from './ui/views';
+import { Me, Welcome, AssessView, Gym, Help, Home, Journal, Library, Programme, Progress, Review, ScenarioView, SessionView, Settings } from './ui/views';
 import { dueReviews, followupDue } from './engine/state';
 
 const NAV = [['#/', 'Today', '☀'], ['#/programme', 'Programme', '🗺'], ['#/me', 'Me', '👤']] as const;
@@ -34,7 +34,7 @@ function Shell() {
     case 'journal': view = <Journal />; break;
     case 'progress': view = <Progress />; break;
     case 'welcome': view = <Welcome />; break;
-    case 'assess': view = !arg ? <AssessCentre /> : ['baseline', 'post', 'followup2', 'followup6'].includes(arg) ? <AssessView key={arg} kind={arg as 'baseline'} /> : <p>Unknown check.</p>; break;
+    case 'assess': view = !arg ? <Progress /> : ['baseline', 'post', 'followup2', 'followup6'].includes(arg) ? <AssessView key={arg} kind={arg as 'baseline'} /> : <p>Unknown check.</p>; break;
     case 'library': view = <Library id={arg} />; break;
     case 'settings': view = <Settings />; break;
     case 'help': view = <Help />; break;

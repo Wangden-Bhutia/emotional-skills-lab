@@ -53,7 +53,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | 4.2b | Kinds of claim kept apart (technique / digital / intervention / this app) | pass | Library intro paragraph; Eisenstadt and Macrynikola claims say "does not validate this app" |
 | 4.2c | Direct vs extrapolation vs background marked | pass | Library badge per source; u:spec13::every source has register metadata with a use label |
 | 4.3 | Limitations visible; nothing invented | pass | Library limitations per source; the review limitations from 2021 and 2024 are quoted from the abstracts |
-| 4.4 | No false precision; thresholds labelled design choices | pass | Assessment centre "not a validated cutoff"; u:spec13::threshold is described as a design choice |
+| 4.4 | No false precision; thresholds labelled design choices | pass | Progress "How scoring works" (formerly a separate Assessment centre page, merged into Progress) "not a validated cutoff"; u:spec13::threshold is described as a design choice |
 | 4.5 | No copyrighted questionnaires; custom items labelled non-validated | pass | ERQ and DERS-16 excluded; "Original, non-validated" text on checks |
 
 ## 5 Curriculum
@@ -100,10 +100,10 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 | # | Requirement | Status | Evidence |
 |---|---|---|---|
 | 9.1 | Onboarding with all listed parts; revisitable | pass | `#/welcome`; e:compliance › 9.1/9.2/9.5…; link in Settings |
-| 9.2 | Dashboard: phase, next lesson, priorities, completed, skills mastered, reviews due, next action; no streaks | pass | Home; same test |
+| 9.2 | Dashboard: phase, next lesson, priorities, completed, skills mastered, reviews due, next action; no streaks | partial | Home; same test. Deviation: a day-streak counter and a 9-dot phase path were added to Home at the user's explicit request, which conflicts with this row's "no streaks" requirement; flagged here rather than silently removed. |
 | 9.3 | Curriculum browser: status, prerequisites, what's next and why, revisit | pass | Programme shows completion and skill status; Session shows prerequisites |
 | 9.4 | Lesson reader keeps progress across reload | pass | e:compliance › 9.4 lesson progress survives reload |
-| 9.5 | Assessment centre with transparent scoring | pass | `#/assess` |
+| 9.5 | Assessment centre with transparent scoring | pass | Merged into Progress (`#/progress`, alias `#/assess`): "How scoring works", phase checkpoints (cumulative), reviews due, skills needing practice, baseline/post/follow-up — folded here to remove duplication with 9.8, rather than kept as a separate page |
 | 9.6 | Gym filters, practise, feedback, retry alternatives | pass | e:app › gym filters…; similar-scenario links |
 | 9.7 | Journal: listed fields, optional, edit and delete, no interpretation | pass | Fields: What happened / What I noticed / My interpretation / Emotion or impulse / What I did / What happened next? / What I will try next time. Schema 2→3 moves old "outcome" into "next". u:data::schema 2 -> 3 journal migration (3 tests); e:compliance › 9.7 |
 | 9.8 | Progress: by skill, assessment, review history; self-report kept apart | pass | Progress sections |
@@ -168,7 +168,7 @@ Status: **pass** = implemented and verified by a test or by the inspection named
 |---|---|---|---|
 | 16a | Privacy text matches what storage actually does | pass | Settings and privacy.md say "not encrypted" and explain the import backup |
 | 16b | No data sent externally | pass | Network audit test |
-| 16c | Learner can see how progress and mastery are calculated | pass | Assessment centre, Settings |
+| 16c | Learner can see how progress and mastery are calculated | pass | Progress ("How scoring works"), Settings |
 | 16d | Honest reporting | pass | This file; verification report |
 | 17 | Final report format | pass | Delivered in the final message |
 | 18.1–14 | Operating instructions (no prohibited services, no invented results, nothing destructive without notice) | pass | No destructive git operations; results come from runs |
