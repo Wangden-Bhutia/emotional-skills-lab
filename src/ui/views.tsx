@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useApp } from './store';
 import { Quiz } from './Quiz';
 import { SESSIONS } from '../content/sessions';
@@ -27,6 +27,7 @@ import type { TradeOff } from '../content/types';
 import { InstallCard } from './install';
 import { useConfirm } from './confirm';
 import { SUPPORT } from '../content/support';
+import { IconPlay, IconMasks, IconBookOpen, IconLightbulb, IconNotepad, IconLock, IconPencil, IconClipboard, IconRefresh, IconBook, IconLifeBuoy, IconSettings } from './icons';
 const range = (r: readonly [number, number]) => `${r[0]} to ${r[1]} min`;
 
 export const APP_VERSION = '1.3.0';
@@ -72,7 +73,7 @@ export function Home() {
     <h1>Today</h1>
     {notice && <div className="card warn" role="alert"><h2>Your saved data could not be read</h2><p>{notice}</p><button onClick={clearNotice}>Dismiss</button></div>}
     {ns ? <section className="card hero" aria-labelledby="next-h">
-      <p className="kicker"><span aria-hidden>▶</span> Next session · Phase {ns.phase}: {phase!.title}</p>
+      <p className="kicker"><IconPlay className="ki" /> Next session · Phase {ns.phase}: {phase!.title}</p>
       <h2 id="next-h">{ns.title}</h2>
       <p className="small muted">Week {ns.week}, day {ns.day} · {ns.kind === 'checkpoint' ? 'checkpoint' : ns.kind} · {range(ns.range)}</p>
       <button className="primary wide" onClick={() => go(`#/session/${ns.id}`)}>Start session</button>
@@ -83,9 +84,9 @@ export function Home() {
     {due > 0 && <section className="card"><h2 className="h3">{due} review{due > 1 ? 's' : ''} due</h2><p className="small">A few minutes of recall keeps earlier skills fresh. Doing these before the next session is a good habit.</p><button onClick={() => go('#/review')}>Open reviews</button></section>}
     {fu && <section className="card"><h2 className="h3">Follow-up is due</h2><p className="small">A short check about {fu === 'followup2' ? 2 : 6} weeks after the programme. Optional.</p><div className="row-btns"><button onClick={() => go(`#/assess/${fu}`)}>Take follow-up</button><button onClick={() => update(x => postponeFollowup(x))}>Postpone a week</button></div></section>}
     <InstallCard />
-    {ns && <details className="card small"><summary>Why this session next</summary><p>{why} {ns.objective}</p></details>}
+    {ns && <details className="card flat small"><summary>Why this session next</summary><p>{why} {ns.objective}</p></details>}
     {priorities.length > 0 && <section className="card"><h2 className="h3">Worth revisiting</h2><ul>{priorities.map(p => <li key={p.id}><a href={`#/session/${p.id}`}>{p.title}</a>: latest delayed answers were below the mastery threshold.</li>)}</ul></section>}
-    {ns && (() => { const sc = pickScenario(st); return <section className="card" aria-labelledby="prac-h"><p className="kicker"><span aria-hidden>🎭</span> Practise a scenario</p><h2 id="prac-h" className="h3">{sc.title}</h2><p className="small muted">Skill: {sc.skill} · {sc.context}</p><div className="row-btns"><button onClick={() => go(`#/scenarios/${sc.id}`)}>Practise this scenario</button><a className="pad" href="#/scenarios">All scenarios</a></div></section>; })()}
+    {ns && (() => { const sc = pickScenario(st); return <section className="card" aria-labelledby="prac-h"><p className="kicker"><IconMasks className="ki" /> Practise a scenario</p><h2 id="prac-h" className="h3">{sc.title}</h2><p className="small muted">Skill: {sc.skill} · {sc.context}</p><div className="row-btns"><button onClick={() => go(`#/scenarios/${sc.id}`)}>Practise this scenario</button><a className="pad" href="#/scenarios">All scenarios</a></div></section>; })()}
     <p className="muted small">This is skills training, not therapy or crisis care. In an emergency in India, dial 112. <a className="pad" href="#/help">Safety and support</a></p>
   </>);
 }
@@ -144,7 +145,7 @@ export function Programme() {
           const done = !!st.completed[s.id], open = isUnlocked(st, s.id);
           const cpOpen = done && s.kind === 'checkpoint' && !phaseMastered(st, s.phase);
           return <li key={s.id}><button disabled={!open} onClick={() => go(`#/session/${s.id}`)} className="row">
-            <span aria-hidden>{cpOpen ? '◐' : done ? '✓' : open ? '○' : '🔒'}</span><span>Week {s.week} · Day {s.day} · {s.title}<span className="sr-only">{cpOpen ? ', attempted, not yet mastered' : done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}{cpOpen ? ' · not yet mastered' : done && s.kind === 'checkpoint' ? ' · mastered' : done && (s.kind === 'lesson' || s.kind === 'practice') ? ` · ${skillStatus(st, s.id).status}` : ''}</span></button></li>;
+            {open || done ? <span aria-hidden>{cpOpen ? '◐' : done ? '✓' : '○'}</span> : <IconLock className="row-icon" />}<span>Week {s.week} · Day {s.day} · {s.title}<span className="sr-only">{cpOpen ? ', attempted, not yet mastered' : done ? ', completed' : open ? ', available' : ', locked'}</span></span><span className="muted small">{s.kind}{cpOpen ? ' · not yet mastered' : done && s.kind === 'checkpoint' ? ' · mastered' : done && (s.kind === 'lesson' || s.kind === 'practice') ? ` · ${skillStatus(st, s.id).status}` : ''}</span></button></li>;
         })}</ul>
       </section>))}
   </>);
@@ -167,7 +168,7 @@ function StepBar({ current, done, skip }: { current: number; done: boolean[]; sk
       <span className="mark" aria-hidden>{state === 'done' ? '✓' : state === 'na' ? '–' : i + 1}</span>{t}<span className="sr-only">{state === 'done' ? ', done' : state === 'current' ? ', current step' : state === 'na' ? ', not part of this session' : ', not started'}</span></li>;
   })}</ol>;
 }
-const Kicker = ({ icon, children }: { icon: string; children: string }) => <p className="kicker"><span aria-hidden>{icon}</span> {children}</p>;
+const Kicker = ({ icon: Icon, children }: { icon: ComponentType<{ className?: string }>; children: string }) => <p className="kicker"><Icon className="ki" /> {children}</p>;
 
 export function SessionView({ id }: { id: string }) {
   const { st, update } = useApp();
@@ -209,11 +210,11 @@ export function SessionView({ id }: { id: string }) {
         {COMPETENCIES[s.id] && <p><strong>Competency:</strong> {COMPETENCIES[s.id]} <span className="muted">{EVIDENCE_RULE}</span></p>}
         <p>{prereq.length ? <>Builds on: {prereq.map(p => <a key={p.id} href={`#/session/${p.id}`}>{p.title} </a>)}</> : 'No prerequisites.'}</p>
         <p className="muted">Time: {range(s.range)}. Reading about {est.words} words, {est.interactions} activity choices, {est.quizItems} questions{s.kind === 'checkpoint' ? '' : ', optional written explanation'}. Low end: faster reading, explanation skipped; high end: slower reading, explanation written. Derived from a measured walk-through of the content, not timed with real learners.</p></details>
-      <section className="block learn" aria-label="Learn"><Kicker icon="📖">Learn</Kicker>{s.teach.map((p, i) => <p key={i}>{p}</p>)}
+      <section className="block learn" aria-label="Learn"><Kicker icon={IconBookOpen}>Learn</Kicker>{s.teach.map((p, i) => <p key={i}>{p}</p>)}
         <p className="small muted">Evidence: {s.claimIds.map(c => { const src = claimSource(c); return src ? <a key={c} href={`#/library/${src.id}`}>{src.authors.split(',')[0]} ({src.year}) </a> : null; })}</p></section>
-      {s.example && <section className="block example" aria-label="Worked example"><Kicker icon="💡">Worked example</Kicker><p>{s.example}</p></section>}
+      {s.example && <section className="block example" aria-label="Worked example"><Kicker icon={IconLightbulb}>Worked example</Kicker><p>{s.example}</p></section>}
       {s.activity && <div className="block try"><Activity a={s.activity} onDone={(c, t) => { setActDone(true); update(x => ({ ...x, activities: { ...x.activities, [s.id]: { at: Date.now(), correct: c, total: t } } })); }} /></div>}
-      <section className="block practice" aria-label="Practice exercise"><Kicker icon="🗒">Practice in your day</Kicker><ol>{s.practice.map((p, i) => <li key={i}>{p}</li>)}</ol></section>
+      <section className="block practice" aria-label="Practice exercise"><Kicker icon={IconNotepad}>Practice in your day</Kicker><ol>{s.practice.map((p, i) => <li key={i}>{p}</li>)}</ol></section>
       {s.id === 'w03d4' && <Breather />}
       <button className="primary wide" disabled={!!s.activity && !actDone} onClick={() => setStage('explain')}>{s.activity && !actDone ? 'Complete the activity to continue' : 'Next: explain it back'}</button>
     </>}
@@ -554,13 +555,13 @@ export function Me() {
         <p className="small"><a href="#/progress">Per-skill detail and charts</a></p></details>
     </section>
     <nav aria-label="Me sections"><ul className="list me-links">
-      <li><a className="row" href="#/me/reflections"><span aria-hidden>📝</span><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
-      <li><a className="row" href="#/assess"><span aria-hidden>📋</span><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
-      <li><a className="row" href="#/scenarios"><span aria-hidden>🎭</span><span>All scenarios</span><span className="muted small">{SCENARIOS.length}</span></a></li>
-      <li><a className="row" href="#/review"><span aria-hidden>🔁</span><span>Reviews</span><span className="muted small">{dueReviews(st).length} due</span></a></li>
-      <li><a className="row" href="#/library"><span aria-hidden>📚</span><span>Library</span><span className="muted small">evidence and sources</span></a></li>
-      <li><a className="row" href="#/help"><span aria-hidden>🛟</span><span>Help and safety</span><span className="muted small">112 · Tele-MANAS</span></a></li>
-      <li><a className="row" href="#/settings"><span aria-hidden>⚙</span><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
+      <li><a className="row" href="#/me/reflections"><IconPencil className="row-icon" /><span>Reflections</span><span className="muted small">{st.journal.length} {st.journal.length === 1 ? "entry" : "entries"}</span></a></li>
+      <li><a className="row" href="#/assess"><IconClipboard className="row-icon" /><span>Assessments</span><span className="muted small">baseline, post, follow-up</span></a></li>
+      <li><a className="row" href="#/scenarios"><IconMasks className="row-icon" /><span>All scenarios</span><span className="muted small">{SCENARIOS.length}</span></a></li>
+      <li><a className="row" href="#/review"><IconRefresh className="row-icon" /><span>Reviews</span><span className="muted small">{dueReviews(st).length} due</span></a></li>
+      <li><a className="row" href="#/library"><IconBook className="row-icon" /><span>Library</span><span className="muted small">evidence and sources</span></a></li>
+      <li><a className="row" href="#/help"><IconLifeBuoy className="row-icon" /><span>Help and safety</span><span className="muted small">112 · Tele-MANAS</span></a></li>
+      <li><a className="row" href="#/settings"><IconSettings className="row-icon" /><span>Settings</span><span className="muted small">theme, backup, data</span></a></li>
     </ul></nav>
   </>);
 }

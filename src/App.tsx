@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { StoreProvider, useApp } from './ui/store';
 import { Me, AssessCentre, Welcome, AssessView, Gym, Help, Home, Journal, Library, Programme, Progress, Review, ScenarioView, SessionView, Settings } from './ui/views';
+import { IconSun, IconMap, IconUser } from './ui/icons';
 
-const NAV = [['#/', 'Today', '☀'], ['#/programme', 'Programme', '🗺'], ['#/me', 'Me', '👤']] as const;
+const NAV = [['#/', 'Today', IconSun], ['#/programme', 'Programme', IconMap], ['#/me', 'Me', IconUser]] as const;
 const PROGRAMME_ROUTES = ['programme', 'session', 'gym', 'scenarios', 'review'];
 function useHash() { const [h, setH] = useState(location.hash || '#/'); useEffect(() => { const f = () => { setH(location.hash || '#/'); window.scrollTo(0, 0); }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, []); return h; }
 
@@ -44,9 +45,9 @@ function Shell() {
     <header className="top"><a href="#/" className="brand">Emotional Skills Lab</a>
       <a href="#/help" className="pad">Help</a></header>
     <main id="main" tabIndex={-1}>{view}</main>
-    <nav className="tabs" aria-label="Main">{NAV.map(([href, label, icon]) => {
+    <nav className="tabs" aria-label="Main">{NAV.map(([href, label, Icon]) => {
       const area = !route ? '#/' : PROGRAMME_ROUTES.includes(route) ? '#/programme' : '#/me';
-      return <a key={href} href={href} aria-current={area === href ? 'page' : undefined}><span aria-hidden className="ti">{icon}</span><span>{label}</span></a>;
+      return <a key={href} href={href} aria-current={area === href ? 'page' : undefined}><Icon className="ti" /><span>{label}</span></a>;
     })}</nav>
   </>);
 }
