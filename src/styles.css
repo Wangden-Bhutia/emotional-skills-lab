@@ -8,7 +8,7 @@
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 a{color:var(--acc)}
 main{max-width:680px;margin:0 auto;padding:12px 16px 96px;outline:none}
-h1{font-size:1.6rem;margin:.6rem 0}h2{font-size:1.2rem;margin:.2rem 0 .5rem}h3,.h3{font-size:1.05rem}
+h1{font-size:2rem;line-height:1.15;margin:.5rem 0 .6rem}h2{font-size:1.375rem;line-height:1.25;margin:.2rem 0 .5rem}h3,.h3{font-size:1.0625rem;line-height:1.3}
 .top{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
 .top nav a{margin-left:14px;display:inline-block;padding:8px 2px;min-height:44px;line-height:28px}
 .brand{font-weight:700;text-decoration:none;color:var(--fg)}
@@ -17,6 +17,7 @@ h1{font-size:1.6rem;margin:.6rem 0}h2{font-size:1.2rem;margin:.2rem 0 .5rem}h3,.
 .tabs a[aria-current=page]{color:var(--acc);font-weight:700;box-shadow:inset 0 3px 0 var(--acc)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
 .card.accent{background:var(--soft)}
+.card.flat{border-color:transparent;background:transparent}
 .warn{border-color:var(--bad)}
 .muted{color:var(--muted)}.small{font-size:.875rem}.lead{font-size:1.05rem}
 button,.btn{font:inherit;min-height:44px;padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
@@ -71,7 +72,9 @@ main:focus,main:focus-visible{outline:none}
 .wide{width:100%;margin-top:8px}
 .pad{display:inline-block;padding:10px 2px;min-height:44px}
 .hero{border:2px solid var(--acc);padding:16px}.hero h2{font-size:1.35rem;margin:.1rem 0 .2rem}.hero-links{margin:.6rem 0 0}.hero-links a{display:inline-block;padding:8px 0}
-.kicker{margin:0 0 .35rem;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc)}
+.kicker{margin:0 0 .35rem;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);display:flex;align-items:center;gap:6px}
+.kicker .ki{width:14px;height:14px;flex:none;stroke-width:2.25}
+.row-icon{width:20px;height:20px;flex:none;color:var(--muted)}
 .steps{list-style:none;display:flex;gap:4px;padding:0;margin:10px 0 4px;counter-reset:s}
 .steps li{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.78rem;color:var(--muted);padding:6px 2px;border-bottom:3px solid var(--line)}
 .steps .mark{display:inline-flex;width:24px;height:24px;border-radius:50%;align-items:center;justify-content:center;border:1.5px solid currentColor;font-size:.75rem;font-weight:700}
