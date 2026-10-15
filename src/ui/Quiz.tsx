@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CheckItem } from '../content/types';
+import { IconCheck } from './icons';
 
 /** Answers one item at a time; first answer counts (retrieval), explanation always shown. */
 export function Quiz({ items, onDone, label }: { items: CheckItem[]; onDone: (r: Record<string, boolean>) => void; label: string }) {
@@ -11,7 +12,7 @@ export function Quiz({ items, onDone, label }: { items: CheckItem[]; onDone: (r:
   const answered = picked !== null;
   return (
     <section className="card" aria-label={label}>
-      <p className="kicker"><span aria-hidden>✅</span> Check · {label}</p>
+      <p className="kicker"><IconCheck className="ki" /> Check · {label}</p>
       <p className="muted">{label}: question {i + 1} of {items.length}</p>
       <div className="qbar" aria-hidden><span style={{ width: `${(i / items.length) * 100}%` }} /></div>
       <h3 id={`q-${it.id}`}>{it.q}</h3>
